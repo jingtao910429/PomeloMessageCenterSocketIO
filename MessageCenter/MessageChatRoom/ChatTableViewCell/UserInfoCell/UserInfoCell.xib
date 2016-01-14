@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="7706" systemVersion="14C109" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES">
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="7703"/>
+    </dependencies>
+    <objects>
+        <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner"/>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
+        <tableViewCell contentMode="scaleToFill" selectionStyle="default" indentationWidth="10" reuseIdentifier="userInfocell" rowHeight="80" id="KGk-i7-Jjw" customClass="UserInfoCell">
+            <rect key="frame" x="0.0" y="0.0" width="389" height="80"/>
+            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+            <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" tableViewCell="KGk-i7-Jjw" id="H2p-sc-9uM">
+                <rect key="frame" x="0.0" y="0.0" width="320" height="43"/>
+                <autoresizingMask key="autoresizingMask"/>
+                <subviews>
+                    <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="Voa-b1-Lca">
+                        <rect key="frame" x="15" y="10" width="60" height="60"/>
+                        <color key="backgroundColor" red="0.90196079015731812" green="0.90196079015731812" blue="0.90196079015731812" alpha="1" colorSpace="calibratedRGB"/>
+                        <constraints>
+                            <constraint firstAttribute="height" constant="60" id="H6j-ee-i5G"/>
+                            <constraint firstAttribute="width" constant="60" id="SvI-SE-9BW"/>
+                        </constraints>
+                    </imageView>
+                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="                              " lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="hp3-Hf-fsI">
+                        <rect key="frame" x="83" y="16" width="282" height="20"/>
+                        <fontDescription key="fontDescription" type="system" pointSize="16"/>
+                        <color key="textColor" cocoaTouchSystemColor="darkTextColor"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="15000554815" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Rxp-2x-Mjz">
+                        <rect key="frame" x="83" y="40" width="282" height="21"/>
+                        <constraints>
+                            <constraint firstAttribute="height" constant="21" id="uzE-Xg-eQc"/>
+                        </constraints>
+                        <fontDescription key="fontDescription" type="system" pointSize="16"/>
+                        <color key="textColor" red="0.41176470588235292" green="0.41176470588235292" blue="0.41176470588235292" alpha="1" colorSpace="calibratedRGB"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                </subviews>
+                <constraints>
+                    <constraint firstItem="Voa-b1-Lca" firstAttribute="top" secondItem="H2p-sc-9uM" secondAttribute="top" constant="10" id="9Cd-bX-u1i"/>
+                    <constraint firstItem="Voa-b1-Lca" firstAttribute="leading" secondItem="H2p-sc-9uM" secondAttribute="leading" constant="15" id="EAa-VO-Evy"/>
+                    <constraint firstItem="hp3-Hf-fsI" firstAttribute="top" secondItem="H2p-sc-9uM" secondAttribute="top" constant="16" id="T0t-bv-8Ac"/>
+                    <constraint firstAttribute="trailing" secondItem="Rxp-2x-Mjz" secondAttribute="trailing" constant="24" id="TOi-r3-pYs"/>
+                    <constraint firstItem="hp3-Hf-fsI" firstAttribute="leading" secondItem="Voa-b1-Lca" secondAttribute="trailing" constant="8" id="aPc-Y9-IPL"/>
+                    <constraint firstAttribute="trailing" secondItem="hp3-Hf-fsI" secondAttribute="trailing" constant="24" id="jJO-p5-aNJ"/>
+                    <constraint firstItem="Rxp-2x-Mjz" firstAttribute="top" secondItem="hp3-Hf-fsI" secondAttribute="bottom" constant="4" id="kJj-uC-ql7"/>
+                    <constraint firstItem="Rxp-2x-Mjz" firstAttribute="leading" secondItem="Voa-b1-Lca" secondAttribute="trailing" constant="8" id="myM-KL-KkH"/>
+                    <constraint firstItem="Rxp-2x-Mjz" firstAttribute="top" secondItem="hp3-Hf-fsI" secondAttribute="bottom" constant="4" id="ngu-gA-r2L"/>
+                </constraints>
+            </tableViewCellContentView>
+            <connections>
+                <outlet property="groupName" destination="hp3-Hf-fsI" id="mSF-Ml-q9G"/>
+                <outlet property="phoneInfo" destination="Rxp-2x-Mjz" id="SZf-mV-Hee"/>
+                <outlet property="titleImageView" destination="Voa-b1-Lca" id="pbO-xK-XxO"/>
+            </connections>
+            <point key="canvasLocation" x="457.5" y="284"/>
+        </tableViewCell>
+    </objects>
+    <simulatedMetricsContainer key="defaultSimulatedMetrics">
+        <simulatedStatusBarMetrics key="statusBar"/>
+        <simulatedOrientationMetrics key="orientation"/>
+        <simulatedScreenMetrics key="destination" type="retina4"/>
+    </simulatedMetricsContainer>
+</document>
