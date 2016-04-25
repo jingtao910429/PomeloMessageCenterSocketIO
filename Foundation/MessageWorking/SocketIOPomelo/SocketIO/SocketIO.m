@@ -363,11 +363,18 @@ NSString* const SocketIOException = @"SocketIOException";
         _timeout = nil;
     }
     
+    /*
+    _timeout = [NSTimer timerWithTimeInterval:_heartbeatTimeout target:self selector:@selector(onTimeout) userInfo:nil repeats:NO];
+    [[NSRunLoop currentRunLoop] addTimer:_timeout forMode:NSDefaultRunLoopMode];
+    [_timeout fire];
+    */
+    
     _timeout = [NSTimer scheduledTimerWithTimeInterval:_heartbeatTimeout
                                                 target:self 
                                               selector:@selector(onTimeout)
                                               userInfo:nil 
                                                repeats:NO];
+    
 }
 
 
@@ -610,6 +617,10 @@ NSString* const SocketIOException = @"SocketIOException";
     _isConnected = NO;
     _isConnecting = NO;
     
+    if (!_delegate) {
+        return;
+    }
+    
     if ([_delegate respondsToSelector:@selector(socketIO:onError:)]) {
         NSMutableDictionary *errorInfo = [NSDictionary dictionaryWithObject:error forKey:NSLocalizedDescriptionKey];
         
@@ -661,6 +672,7 @@ NSString* const SocketIOException = @"SocketIOException";
         else {
             // add small buffer of 7sec (magic xD)
             _heartbeatTimeout += 7.0;
+            
         }
         DEBUGLOG(@"heartbeatTimeout: %f", _heartbeatTimeout);
         

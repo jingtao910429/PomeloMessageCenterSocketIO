@@ -47,7 +47,15 @@ static RYNotifyHandler *shareHandler = nil;
 
 - (void)onAllNotify {
     
-    NSArray *tempNotifyArr = @[[NSNumber numberWithInt:NotifyTypeOnChat],[NSNumber numberWithInt:NotifyTypeOnRead],[NSNumber numberWithInt:NotifyTypeOnTop],[NSNumber numberWithInt:NotifyTypeOnDisturbed],[NSNumber numberWithInt:NotifyTypeOnGroupMsgList],[NSNumber numberWithInt:NotifyTypeOnChatHistory],[NSNumber numberWithInt:NotifyTypeOnApproveStatusChanged],[NSNumber numberWithInt:NotifyTypeOnRemoveUser]];
+    NSArray *tempNotifyArr = @[[NSNumber numberWithInt:NotifyTypeOnChat],
+                               [NSNumber numberWithInt:NotifyTypeOnRead],
+                               [NSNumber numberWithInt:NotifyTypeOnTop],
+                               [NSNumber numberWithInt:NotifyTypeOnDisturbed],
+                               [NSNumber numberWithInt:NotifyTypeOnGroupMsgList],
+                               [NSNumber numberWithInt:NotifyTypeOnChatHistory],
+                               [NSNumber numberWithInt:NotifyTypeOnApproveStatusChanged],
+                               [NSNumber numberWithInt:NotifyTypeOnRemoveUser],
+                               [NSNumber numberWithInt:NotifyTypeOnAddUser]];
     
     for (NSNumber *subNumber in tempNotifyArr) {
         
@@ -59,11 +67,12 @@ static RYNotifyHandler *shareHandler = nil;
         
         [connectToServer.pomeloClient onRoute:[RYChatAPIManager notifyWithType:self.notifyType] withCallback:^(id arg , NSString *route) {
             
+            [MessageTool setConnectStatus:@"1"];
+            
             if ([route isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnChat]]) {
                 
                 NSMutableDictionary *tempDict = [[NSMutableDictionary alloc] initWithDictionary:arg];
                 
-                #pragma mark  待测试
                 [weakSelf storeMessageWithDict:tempDict];
                 
                 /*
@@ -84,7 +93,7 @@ static RYNotifyHandler *shareHandler = nil;
                     if ([typeStr isEqualToString:@"103"] || [typeStr isEqualToString:@"104"] ||[typeStr isEqualToString:@"101"] || [typeStr isEqualToString:@"105"]) {
                         
                         // 103/104/105特殊处理
-                        [self removeGroupAndGroupInfosWithGroupCondition:messages[i]];
+                        [self dealSpecialGroupAndGroupInfosWithGroupCondition:messages[i]];
                         
                     }else {
                         
@@ -144,25 +153,32 @@ static RYNotifyHandler *shareHandler = nil;
                     }
                 }
                 
-            }else if ([route isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnApproveStatusChanged]]) {
+            }else if ([route isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnApproveStatusChanged]]
+                      || [route isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnRemoveUser]]
+                      || [route isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnRead]]
+                      || [route isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnAddUser]]) {
                 
+                //NotifyTypeOnApproveStatusChanged
                 //信贷申请状态变更
                 
-                [self removeGroupAndGroupInfosWithGroupCondition:arg];
                 
-            }else if ([route isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnRemoveUser]]) {
-                
+                //NotifyTypeOnRemoveUser
                 //移除组和组信息
                 
-                [self removeGroupAndGroupInfosWithGroupCondition:arg];
+                //NotifyTypeOnRead
+                //标记已读
                 
-            }else if ([route isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnRead]]) {
-                
-                [self removeGroupAndGroupInfosWithGroupCondition:arg];
+                //NotifyTypeOnAddUser
+                //人员添加
+                [self dealSpecialGroupAndGroupInfosWithGroupCondition:arg];
                 
             }
             
-            if ([route isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnChat]]) {
+            if ([route isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnChat]]
+                || [route isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnApproveStatusChanged]]
+                || [route isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnRemoveUser]]
+                || [route isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnAddUser]]
+                ) {
                 
                 dispatch_async(dispatch_get_main_queue(), ^{
                     [[NSNotificationCenter defaultCenter] postNotificationName:[MessageTool PushGlobalNotificationStr] object:arg userInfo:@{@"route":route}];
@@ -240,8 +256,7 @@ static RYNotifyHandler *shareHandler = nil;
 
 //单个信息处理
 
-- (void)storeMessageWithDict:(NSDictionary *)dict {
-    
+- (NSMutableDictionary *)storeSingleMessageWithDict:(NSDictionary *)dict {
     
     NSMutableDictionary *tempDict = [[NSMutableDictionary alloc] init];
     
@@ -262,6 +277,13 @@ static RYNotifyHandler *shareHandler = nil;
     //存储信息
     [[PomeloMessageCenterDBManager shareInstance] addDataToTableWithType:MessageCenterDBManagerTypeMESSAGE data:[NSArray arrayWithObjects:tempDict, nil]];
     
+    return tempDict;
+    
+}
+
+- (void)storeMessageWithDict:(NSDictionary *)dict {
+    
+    NSMutableDictionary *tempDict = [self storeSingleMessageWithDict:dict];
     
     if (![[PomeloMessageCenterDBManager shareInstance] existTableWithType:MessageCenterDBManagerTypeMETADATA markID:tempDict[@"GroupId"]]) {
         
@@ -341,8 +363,6 @@ static RYNotifyHandler *shareHandler = nil;
             [[PomeloMessageCenterDBManager shareInstance] updateGroupLastedMessageWithTableWithType:MessageCenterDBManagerTypeMETADATA SQLvalue:[NSString stringWithFormat:@"%@",tempDict[@"GroupId"]] parameters:resultDict];
         }
         
-        
-        
         NSArray *users =  [[PomeloMessageCenterDBManager shareInstance] fetchDataInfosWithType:MessageCenterDBManagerTypeUSER conditionName:@"UserId" SQLvalue:tempDict[@"UserId"]];
         
         if (users.count == 0) {
@@ -372,15 +392,30 @@ static RYNotifyHandler *shareHandler = nil;
  */
 
 //移除组/组消息
-- (void)removeGroupAndGroupInfosWithGroupCondition:(NSDictionary *)conditionDict{
+- (void)dealSpecialGroupAndGroupInfosWithGroupCondition:(NSDictionary *)conditionDict{
     
     if ([[NSString stringWithFormat:@"%@",conditionDict[@"type"]] isEqualToString:@"103"]) {
         
-        if ([conditionDict[@"toUsers"]  isEqualToString:[MessageTool getUserID]]) {
-            //如果消息type为103
-            NSString *groupId = conditionDict[@"toUsers"];
-            [[PomeloMessageCenterDBManager shareInstance] deleteDataWithTableWithType:MessageCenterDBManagerTypeMETADATA SQLvalue:groupId];
-            [[PomeloMessageCenterDBManager shareInstance] deleteDataWithTableWithType:MessageCenterDBManagerTypeMESSAGE SQLvalue:groupId];
+        if ([conditionDict[@"toUsers"] isKindOfClass:[NSString class]]) {
+            
+            if ([conditionDict[@"toUsers"]  isEqualToString:[MessageTool getUserID]]) {
+                //如果消息type为103
+                NSString *groupId = conditionDict[@"groupId"];
+                [[PomeloMessageCenterDBManager shareInstance] deleteDataWithTableWithType:MessageCenterDBManagerTypeMETADATA SQLvalue:groupId];
+                [[PomeloMessageCenterDBManager shareInstance] deleteDataWithTableWithType:MessageCenterDBManagerTypeMESSAGE SQLvalue:groupId];
+            }
+            
+        }else {
+            
+            for (NSString *removeUserStr in conditionDict[@"toUsers"]) {
+                if ([removeUserStr  isEqualToString:[MessageTool getUserID]]) {
+                    //如果消息type为103
+                    NSString *groupId = conditionDict[@"groupId"];
+                    [[PomeloMessageCenterDBManager shareInstance] deleteDataWithTableWithType:MessageCenterDBManagerTypeMETADATA SQLvalue:groupId];
+                    [[PomeloMessageCenterDBManager shareInstance] deleteDataWithTableWithType:MessageCenterDBManagerTypeMESSAGE SQLvalue:groupId];
+                }
+            }
+            
         }
         
     }else if([[NSString stringWithFormat:@"%@",conditionDict[@"type"]] isEqualToString:@"104"]){
@@ -435,11 +470,47 @@ static RYNotifyHandler *shareHandler = nil;
             
         }
 
-    }else if ([[NSString stringWithFormat:@"%@",conditionDict[@"type"]] isEqualToString:@"101"]) {
+    }else if ([[NSString stringWithFormat:@"%@",conditionDict[@"type"]] isEqualToString:@"101"] || ([[NSString stringWithFormat:@"%@",conditionDict[@"type"]] isEqualToString:@"106"])) {
+        
+        //106 onAddUser
+        //101 信贷申请相关
         
         //更新信贷申请状态
         [[PomeloMessageCenterDBManager shareInstance] updateGroupLastedMessageWithTableWithType:MessageCenterDBManagerTypeMETADATA SQLvalue:conditionDict[@"groupId"] parameters:[NSDictionary dictionaryWithObjectsAndKeys:conditionDict[@"_id"],@"LastedMsgId",conditionDict[@"time"],@"LastedMsgTime",conditionDict[@"content"],@"LastedMsgContent",[NSString stringWithFormat:@"%@",conditionDict[@"creditApplicationStatus"]],@"ApproveStatus",nil]];
         
+        if ([[NSString stringWithFormat:@"%@",conditionDict[@"type"]] isEqualToString:@"101"]) {
+            
+            NSMutableDictionary *messageDict = [[NSMutableDictionary alloc] initWithDictionary:conditionDict];
+            [messageDict setValue:[NSString stringWithFormat:@"%@",messageDict[@"groupId"]] forKey:@"toGroupId"];
+            
+            [self storeMessageWithDict:messageDict];
+            
+        }else {
+            
+            NSDictionary *resultDict = (NSDictionary *)conditionDict;
+            
+            NSArray *users = resultDict[@"AddedUsers"];
+            
+            NSMutableDictionary *messageDict = [[NSMutableDictionary alloc] initWithDictionary:resultDict];
+            
+            NSMutableString *nameStr = [[NSMutableString alloc] init];
+            
+            for (int i = 0; i < users.count; i ++) {
+                
+                NSDictionary *userDict = users[i];
+                
+                if (i != users.count - 1) {
+                    [nameStr appendFormat:@"%@,",userDict[@"userName"]];
+                }else {
+                    [nameStr appendFormat:@"%@",userDict[@"userName"]];
+                }
+                
+            }
+            
+            [messageDict setValue:[NSString stringWithFormat:@"%@加入群组",nameStr] forKey:@"content"];
+            [messageDict setValue:[NSString stringWithFormat:@"%@",resultDict[@"groupId"]] forKey:@"toGroupId"];
+            [self storeSingleMessageWithDict:messageDict];
+        }
     }
     
 }

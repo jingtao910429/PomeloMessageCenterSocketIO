@@ -67,7 +67,11 @@ typedef enum {
     NSString *_endpoint;
     NSDictionary *_params;
     
-    __unsafe_unretained id<SocketIODelegate> _delegate;
+    //由于delegate的非拥有性，在ARC下应该首选weak，因为它可以防止野指针问题，更加安全。
+    //但如果在iOS4下，由于还未支持weak，就只能退而求其次，使用unsafe_unretained了。
+    //__unsafe_unretained id<SocketIODelegate> _delegate;
+    
+    __weak id<SocketIODelegate> _delegate;
     
     NSObject <SocketIOTransport> *_transport;
     
@@ -95,7 +99,10 @@ typedef enum {
 @property (nonatomic, readonly) NSTimeInterval heartbeatTimeout;
 @property (nonatomic) BOOL useSecure;
 @property (nonatomic, readonly) BOOL isConnected, isConnecting;
-@property (nonatomic, unsafe_unretained) id<SocketIODelegate> delegate;
+
+//修改
+//@property (nonatomic, unsafe_unretained) id<SocketIODelegate> delegate;
+@property (nonatomic, weak) id<SocketIODelegate> delegate;
 
 - (id) initWithDelegate:(id<SocketIODelegate>)delegate;
 - (void) connectToHost:(NSString *)host onPort:(NSInteger)port;

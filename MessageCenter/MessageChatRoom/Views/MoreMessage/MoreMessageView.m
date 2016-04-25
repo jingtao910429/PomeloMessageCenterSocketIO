@@ -73,6 +73,10 @@
 - (void)unReadMessageNumber:(NSString *)number
 {
     NSInteger unReadNumber = [number integerValue] - kFetchMessageNumber;
+    if (unReadNumber < 0) {
+        self.hidden = YES;
+        return;
+    }
     self.unReadMessageNumber = unReadNumber;
     if (unReadNumber < 5) {
         self.hidden = YES;

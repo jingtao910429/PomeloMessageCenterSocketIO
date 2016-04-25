@@ -51,7 +51,7 @@
         }
     }
 
-//    [self.getMembersOfUserInfoAPICmd loadData];
+    [self.getMembersOfUserInfoAPICmd loadData];
 }
 
 - (void)configUI

@@ -48,12 +48,12 @@
     
     NSString *status = dict[@"status"];
     if (!isEmptyString(status)) {
-        
         model.isSendFail = !status.boolValue;
     }
     
     // 判断是否是系统消息
-    if ([dict[@"type"] integerValue] == 101) {
+    NSInteger typeValue = [dict[@"type"] integerValue];
+    if (typeValue == 101 || typeValue == 106) {
         model.messageType   = MessageTypeSystem;
         if (isEmptyString(model.text) || [model.text isEqualToString:@"(null)"] || [model.text isEqualToString:@"<null>"]) {
             return nil;
@@ -147,6 +147,7 @@
             [historyData addObject:messageModel];
         }
     }
+
     return historyData;
 }
 /**

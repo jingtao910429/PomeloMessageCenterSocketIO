@@ -91,7 +91,7 @@ static RYChatHandler *shareChatHandler = nil;
                     
                     [MessageTool setUserID:userInfos[@"userId"]];
                     [MessageTool setSessionId:connectorInitDict[@"sessionId"]];
-                    [MessageTool setConnectState:@"YES"];
+                    [MessageTool setConnectStatus:@"1"];
                     
                     //如果有置顶信息，则设置置顶
                     if (userInfos[@"topGroupId"] && ![userInfos[@"topGroupId"] isKindOfClass:[NSNull class]] && [userInfos[@"topGroupId"] length] != 0) {
@@ -128,6 +128,8 @@ static RYChatHandler *shareChatHandler = nil;
                 
                 if ([[NSString stringWithFormat:@"%@",connectorInitDict[@"code"]] isEqualToString:[NSString stringWithFormat:@"%d",(int)ResultCodeTypeSuccess]]) {
                     
+                    [MessageTool setConnectStatus:@"1"];
+                    
                     NSLog(@"WriteClientInfo －－ 发送客户信息成功");
                 }
                 
@@ -137,9 +139,30 @@ static RYChatHandler *shareChatHandler = nil;
                 if ([[NSString stringWithFormat:@"%@",connectorInitDict[@"code"]] isEqualToString:[NSString stringWithFormat:@"%d",(int)ResultCodeTypeSuccess]]) {
                     
                     //如果获取组和组成员成功，更新MsgMetadata表
-                    
-                    NSDictionary *tempDict = (NSDictionary *)connectorInitDict[@"groupInfo"];
-                    [weakSelf storeGroupInfoWithDict:tempDict];
+
+                    if (connectorInitDict[@"groupInfo"] && ![connectorInitDict[@"groupInfo"] isKindOfClass:[NSNull class]] && [connectorInitDict[@"groupInfo"] isKindOfClass:[NSDictionary class]]) {
+                        
+                        NSDictionary *tempDict = connectorInitDict[@"groupInfo"];
+                        
+                        NSArray *usersArr = tempDict[@"users"];
+                        
+                        BOOL isExit = NO;
+                        
+                        for (NSDictionary *userDict in usersArr) {
+                            
+                            if ([userDict[@"userId"] isEqualToString:[MessageTool getUserID]]) {
+                                isExit = YES;
+                                break;
+                            }
+                            
+                        }
+                        
+                        if (isExit) {
+                            NSDictionary *tempDict = (NSDictionary *)connectorInitDict[@"groupInfo"];
+                            [weakSelf storeGroupInfoWithDict:tempDict];
+                        }
+                        
+                    }
                     
                 }
                 
@@ -175,8 +198,6 @@ static RYChatHandler *shareChatHandler = nil;
             
             if ([weakSelf.chatDelegate respondsToSelector:@selector(connectToChatSuccess:result:requestId:)]) {
                 [weakSelf.chatDelegate connectToChatSuccess:weakSelf result:connectorInitDict requestId:chatNumber.integerValue];
-            }else{
-                NSAssert(0,@"connectToChatSuccess:result:-方法必须实现");
             }
             
             [MessageTool setDBChange:@"YES"];
@@ -185,8 +206,6 @@ static RYChatHandler *shareChatHandler = nil;
             
             if ([weakSelf.chatDelegate respondsToSelector:@selector(connectToChatFailure:result:requestId:)]) {
                 [weakSelf.chatDelegate connectToChatFailure:weakSelf result:connectorInitDict requestId:chatNumber.integerValue];
-            }else{
-                NSAssert(0,@"connectToChatFailure:result:-方法必须实现");
             }
         }
         
@@ -246,8 +265,8 @@ static RYChatHandler *shareChatHandler = nil;
         [tempGroups addObject:groupInfo];
         
         //获取组成员信息
-        self.getMembersAPICmd.path = [NSString stringWithFormat:GetMembers,groupInfo[@"GroupId"]];
-        [self.getMembersAPICmd loadData];
+        //self.getMembersAPICmd.path = [NSString stringWithFormat:GetMembers,groupInfo[@"GroupId"]];
+        //[self.getMembersAPICmd loadData];
         
     }
     

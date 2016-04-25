@@ -750,6 +750,9 @@ static __strong NSData *CRLFCRLF;
 
 - (void)_handleMessage:(id)message
 {
+    if (!self.delegate) {
+        return;
+    }
     SRFastLog(@"Received message");
     [self _performDelegateBlock:^{
         [self.delegate webSocket:self didReceiveMessage:message];
@@ -1740,13 +1743,22 @@ static NSRunLoop *networkRunLoop = nil;
         _runLoop = [NSRunLoop currentRunLoop];
         dispatch_group_leave(_waitGroup);
         
-        NSTimer *timer = [[NSTimer alloc] initWithFireDate:[NSDate distantFuture] interval:0.0 target:nil selector:nil userInfo:nil repeats:NO];
-        [_runLoop addTimer:timer forMode:NSDefaultRunLoopMode];
-        
-        while ([_runLoop runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]) {
+        @try {
+            NSTimer *timer = [[NSTimer alloc] initWithFireDate:[NSDate distantFuture] interval:0.0 target:nil selector:nil userInfo:nil repeats:NO];
+            [_runLoop addTimer:timer forMode:NSDefaultRunLoopMode];
+            
+            while ([_runLoop runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]) {
+                
+            }
+            assert(NO);
+        }
+        @catch (NSException *exception) {
             
         }
-        assert(NO);
+        @finally {
+            
+        }
+        
     }
 }
 

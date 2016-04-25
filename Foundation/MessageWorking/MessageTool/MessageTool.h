@@ -20,9 +20,9 @@
 //失去连接通知
 + (NSString *)ConnectStateNotificationStr;
 
-//设置当前连接状态
-+ (NSString *)connectState;
-+ (void)setConnectState:(NSString *)connectState;
+//设置当前连接状态 (//1表示链接成功 0 表示连接失败 －1表示正在连接)
++ (NSString *)connectStatus;
++ (void)setConnectStatus:(NSString *)connectStatus;
 
 //消息免打扰（全局disable）-------区分用户
 + (void)setDisturbed:(NSString *)disturbedStr;

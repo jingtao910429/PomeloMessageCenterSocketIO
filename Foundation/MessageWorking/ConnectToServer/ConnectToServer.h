@@ -17,8 +17,6 @@
 
 - (void)connectToServerFailureWithData:(id)data;
 
-- (void)connectToServerDisconnectSuccessWithData:(id)data;
-
 @end
 
 @interface ConnectToServer : NSObject
@@ -28,6 +26,7 @@
 @property (nonatomic, strong)          PomeloClient *pomeloClient;
 
 + (instancetype)shareInstance;
+
 /// 连接服务器
 - (void)connectToSeverGate;
 /// 断开连接

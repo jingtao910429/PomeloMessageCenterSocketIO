@@ -23,7 +23,11 @@ typedef void(^PomeloCallback)(id callback, NSString *route);
 @interface PomeloClient : NSObject <SocketIODelegate>
 {
     
-    __unsafe_unretained id<PomeloDelegate> _delegate;
+    //由于delegate的非拥有性，在ARC下应该首选weak，因为它可以防止野指针问题，更加安全。
+    //但如果在iOS4下，由于还未支持weak，就只能退而求其次，使用unsafe_unretained了。
+    //__unsafe_unretained id<PomeloDelegate> _delegate;
+    
+    __weak id<PomeloDelegate> _delegate;
     
     NSMutableDictionary *_callbacks;
     NSInteger _reqId;

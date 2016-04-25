@@ -94,7 +94,7 @@ NSString *const kGroupChatCellInfoNotDisturb = @"GroupChatCellInfoNotDisturb";
         _leftValueLabel = [[UILabel alloc] initWithFrame:CGRectMake([UIScreen mainScreen].bounds.size.width-215, 12, 200, 20)];
         _leftValueLabel.textAlignment = NSTextAlignmentRight;
         _leftValueLabel.font = [UIFont systemFontOfSize:16];
-        _leftValueLabel.text = @"刘晓明-有利网-30万";
+        _leftValueLabel.text = @"";
     }
     return _leftValueLabel;
 }

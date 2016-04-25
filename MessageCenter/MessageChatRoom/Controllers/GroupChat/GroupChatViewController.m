@@ -73,7 +73,7 @@
 
 - (void)configUI
 {
-    [Tool backButton:self btnText:@"群聊消息" action:@selector(gotoBack) addTarget:self];
+    [Tool backButton:self btnText:@"群聊信息" action:@selector(gotoBack) addTarget:self];
     ////////////配置tableView footer///////////////
     UIView *footerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width, 100)];
     [footerView addSubview:self.quitButton];
@@ -95,7 +95,7 @@
     if (section == 0) {
         return 1;
     } else {
-        return 2;
+        return 1;
     }
 }
 

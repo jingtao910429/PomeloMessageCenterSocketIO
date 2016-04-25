@@ -8,6 +8,9 @@
 
 #import "ChatViewRoomController+ChatViewRoom.h"
 #import "MJRefresh.h"
+#import "PomeloMessageCenterDBManager.h"
+#import "MessageChatBarSetTool.h"
+
 @implementation ChatViewRoomController (ChatViewRoom)
 
 - (void)configNavigationBar
@@ -20,7 +23,7 @@
 
 - (void)configNavigationBarItemWithActions:(NSArray *)actions
 {
-    UIImage *backImg = [UIImage imageNamed:@"original_back_topBar_Icon"];
+    UIImage *backImg = [UIImage imageNamed:@"ryback_topBar_Icon"];
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
     btn.frame = CGRectMake(0, 0, backImg.size.width, backImg.size.height);
     [btn setBackgroundImage:backImg forState:UIControlStateNormal];
@@ -31,9 +34,6 @@
     UIImage *image = [[UIImage imageNamed:@"groupinfo"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
     UIBarButtonItem *buttonItem = [[UIBarButtonItem alloc] initWithImage:image style:UIBarButtonItemStyleDone target:self action:NSSelectorFromString(actions[1])];
     self.navigationItem.rightBarButtonItem = buttonItem;
-    
-    
-    
 }
 
 - (void)configNavigationBarWithTitles:(NSArray *)titles
@@ -51,6 +51,8 @@
     groupInfo.textAlignment = NSTextAlignmentCenter;
     [titleView addSubview:groupInfo];
     self.navigationItem.titleView = titleView;
+    
+    
 }
 
 - (void)configTableViewWithTapAction:(NSString *)action
@@ -62,11 +64,6 @@
     tableView.height = SCREEN_BOUND_HEIGHT - 40 - 64 - 33;
     tableView.backgroundColor = [UIColor colorWithRed:237.0/255 green:238.0/255 blue:244.0/255 alpha:1.0];
     tableView.contentInset = UIEdgeInsetsMake(15, 0, 15, 0);
-    
-//    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:NSSelectorFromString(action)];
-//    tap.delegate = self;
-//    [tableView addGestureRecognizer:tap];
-    
 }
 
 - (void)addHeaderRefreshWithAction:(NSString *)action
@@ -83,8 +80,10 @@
     UITableView *tableView = [self valueForKey:@"tableView"];
     __weak typeof(self)  weakSelf = self;
     self.applicationStatusView.ApplicationStatusViewBlock = ^ () {
-        weakSelf.applyForProgressDetail.approveStatus = [info[@"approveStatus"] integerValue];
-        [weakSelf.navigationController pushViewController:weakSelf.applyForProgressDetail animated:YES];
+        ApplyForProgressDetail *applyForProgressDetail = [[ApplyForProgressDetail alloc] init];
+        applyForProgressDetail.approveStatus = [info[@"approveStatus"] integerValue];
+        applyForProgressDetail.isHideSection = YES;
+        [weakSelf.navigationController pushViewController:applyForProgressDetail animated:YES];
     };
     [self.view addSubview:self.applicationStatusView];
     ////////////链接中断提示///////////////
@@ -99,6 +98,51 @@
     ////////////配置底部输入框View///////////////
     self.chatInputBar.top = tableView.bottom;
     [self.view addSubview:self.chatInputBar];
+}
+#pragma mark - UIGestureRecognizerDelegate
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
+{
+    if ([touch.view isKindOfClass:[UIControl class]]){
+        return NO;
+    }
+    if ([touch.view isKindOfClass:[UITableView class]] && self.touchEndEidt != gestureRecognizer) {
+        return NO;
+    }
+    return YES;
+}
+#pragma mark - APICmdApiCallBackDelegate
+- (void)apiCmdDidSuccess:(RYBaseAPICmd *)baseAPICmd responseData:(id)responseData
+{
+    if (baseAPICmd == self.getMembersAPICmd) {
+        NSArray *infoArray = responseData;
+        if ([infoArray isKindOfClass:[NSArray class]]) {
+            if (infoArray.count == 0) {
+                return;
+            }
+            NSMutableArray *userInfoArray = [[NSMutableArray alloc] init];
+            for (NSDictionary *userInfo in infoArray) {
+                NSMutableDictionary *tempDict = [[NSMutableDictionary alloc] init];
+                NSString *userId = userInfo[@"UserId"];
+                if (isEmptyString(userId)) {
+                    return;
+                }
+                tempDict[@"UserId"]     = userId;
+                tempDict[@"UserRole"]   = userInfo[@"UserRole"] == nil?@"":userInfo[@"UserRole"];
+                tempDict[@"PersonName"] = userInfo[@"MsgGroupMemberName"] == nil?@"":userInfo[@"MsgGroupMemberName"];
+                tempDict[@"UserType"]   = userInfo[@"UserType"] == nil?@"":userInfo[@"UserType"];
+                tempDict[@"PhoneNo"]    = userInfo[@"PhoneNo"]  == nil?@"":userInfo[@"PhoneNo"];
+                tempDict[@"Avatar"]     = userInfo[@"Avatar"]   == nil?@"":userInfo[@"Avatar"];
+                [userInfoArray addObject:tempDict];
+            }
+            [[PomeloMessageCenterDBManager shareInstance] addDataToTableWithType:MessageCenterDBManagerTypeUSER data:userInfoArray];
+            [self refreshTableView];
+        }
+    }
+}
+
+- (void)apiCmdDidFailed:(RYBaseAPICmd *)baseAPICmd error:(NSError *)error
+{
+    
 }
 
 
@@ -168,58 +212,36 @@
     [self setValue:[[self selectModelOfMessageSendArray:NO] messageId] forKey:@"fetchUserMessageId"];
 }
 
-- (void)messageDataModelArrayAddModels:(NSArray *)modelArray completeFinishBlock:(void (^)())block
+- (void)messageDataModelArrayAddModels:(NSMutableArray *)modelArray completeFinishBlock:(void (^)())block
 {
     if (modelArray.count == 0) {
         block();
         return;
     }
-    dispatch_async(dispatch_get_global_queue(0, 0), ^{
-        //1.在该数组里加入时间轴
-        NSMutableArray *tempArray = [[NSMutableArray alloc] init];
-        for (int i = 0; i < modelArray.count; i++) {
-            MessageModel *lastModel = modelArray[i];
-            [tempArray addObject:lastModel];
-            if ((i+1) > (modelArray.count-1)) {
-                break;
-            }
-            MessageModel *currentModel = modelArray[i+1];
-            [MessageModel getTimeIntervalCurrentModel:currentModel lastModel:lastModel destinationArray:tempArray atIndex:tempArray.count];
+    //1.在该数组里加入时间轴
+    NSMutableArray *tempArray = [[NSMutableArray alloc] init];
+    
+    for (int i = 0; i < modelArray.count; i++) {
+        MessageModel *lastModel = modelArray[i];
+        [tempArray addObject:lastModel];
+        if ((i+1) > (modelArray.count-1)) {
+            break;
         }
-        //2.在临界点加入时间轴
-        MessageModel *lastModel = tempArray.lastObject;
-        NSMutableArray *messageDataModelArray = [self valueForKey:@"messageDataModelArray"];
-        MessageModel *currentModel = messageDataModelArray.firstObject;
+        MessageModel *currentModel = modelArray[i+1];
         [MessageModel getTimeIntervalCurrentModel:currentModel lastModel:lastModel destinationArray:tempArray atIndex:tempArray.count];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            NSIndexSet *indexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0,[tempArray count])];
-            
-            [messageDataModelArray insertObjects:tempArray atIndexes:indexes];
-            [self setValue:[[self selectModelOfMessageSendArray:NO] messageId] forKey:@"fetchUserMessageId"];
-            UITableView *tableView = [self valueForKey:@"tableView"];
-            [tableView reloadData];
-            block();
-        });
-    });
-}
-
-- (void)refreshSendMessageStatus:(BOOL)status model:(MessageModel *)model
-{
-    NSMutableArray *messageDataModelArray = [self valueForKey:@"messageDataModelArray"];
-    NSInteger index = [messageDataModelArray indexOfObject:model];
-    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:index inSection:0];
-    UITableView *tableView = [self valueForKey:@"tableView"];
-    MessageCell *cell = (MessageCell *)[tableView cellForRowAtIndexPath:indexPath];
-    if (cell == nil) {
-        model.animateStatus = NO;
-        if (status) {
-            
-            model.isSendFail    = NO;
-        } else {
-            model.isSendFail    = YES;
-        }
     }
-    [cell endSendMessageStatus:status];
+    UITableView *tableView = [self valueForKey:@"tableView"];
+    //2.在临界点加入时间轴
+    MessageModel *lastModel = tempArray.lastObject;
+    NSMutableArray *messageDataModelArray = [self valueForKey:@"messageDataModelArray"];
+    MessageModel *currentModel = messageDataModelArray.firstObject;
+    [MessageModel getTimeIntervalCurrentModel:currentModel lastModel:lastModel destinationArray:tempArray atIndex:tempArray.count];
+    NSIndexSet *indexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0,[tempArray count])];
+    
+    [messageDataModelArray insertObjects:tempArray atIndexes:indexes];
+    [self setValue:[[self selectModelOfMessageSendArray:NO] messageId] forKey:@"fetchUserMessageId"];
+    [tableView reloadData];
+    block();
 }
 
 - (void)messageSendFailedOfNetDisconnect
@@ -228,10 +250,14 @@
     if (sendMessageDict.count != 0) {
         NSArray *allKeys = sendMessageDict.allKeys;
         for (NSString *key in allKeys) {
-            [self refreshSendMessageStatus:NO model:sendMessageDict[key]];
+            MessageModel *model = sendMessageDict[key];
+            model.animateStatus = NO;
+            model.isSendFail    = YES;
         }
         [sendMessageDict removeAllObjects];
     }
+    UITableView *tableView = [self valueForKey:@"tableView"];
+    [tableView reloadData];
 }
 
 - (void)disconnectViewHide:(BOOL)hide
@@ -256,24 +282,11 @@
     UITableView *tableView = [self valueForKey:@"tableView"];
     
     if (messageDataModelArray.count > 1) {
-        NSIndexPath *indexPath = [NSIndexPath indexPathForItem:messageDataModelArray.count -1 inSection:0];
+        NSIndexPath *indexPath = [NSIndexPath indexPathForItem:messageDataModelArray.count inSection:0];
         [tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionTop animated:YES];
     }
     
 }
-
-#pragma mark UIGestureRecognizerDelegate
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
-{
-    if ([touch.view isKindOfClass:[UIControl class]]){
-        return NO;
-    }
-    if ([touch.view isKindOfClass:[UITableView class]] && self.touchEndEidt != gestureRecognizer) {
-        return NO;
-    }
-    return YES;
-}
-
 
 #pragma mark - event responses
 
@@ -283,6 +296,17 @@
     CGFloat duration = [userInfo[@"UIKeyboardAnimationDurationUserInfoKey"] doubleValue];
     CGRect keyFrame = [userInfo[@"UIKeyboardFrameEndUserInfoKey"] CGRectValue];
     CGFloat moveY = keyFrame.origin.y;
+    
+    BOOL isAnimate = YES;
+    if (moveY != 0) {
+        [MessageChatBarSetTool setChatBarFrameSet:NSStringFromCGRect(keyFrame)];
+    }else {
+        isAnimate = NO;
+        keyFrame = CGRectFromString([MessageChatBarSetTool chatBarFrameSet]);
+    }
+    
+    moveY = keyFrame.origin.y;
+    
     NSMutableArray *messageDataModelArray = [self valueForKey:@"messageDataModelArray"];
     UITableView *tableView = [self valueForKey:@"tableView"];
     [UIView animateWithDuration:duration animations:^{
@@ -290,8 +314,8 @@
         tableView.height = self.chatInputBar.top - 30;
     } completion:^(BOOL finished) {
         if (messageDataModelArray.count != 0) {
-            NSIndexPath *lastPath = [NSIndexPath indexPathForRow:messageDataModelArray.count - 1 inSection:0];
-            [tableView scrollToRowAtIndexPath:lastPath atScrollPosition:UITableViewScrollPositionBottom animated:YES];
+            NSIndexPath *lastPath = [NSIndexPath indexPathForRow:messageDataModelArray.count inSection:0];
+            [tableView scrollToRowAtIndexPath:lastPath atScrollPosition:UITableViewScrollPositionBottom animated:isAnimate];
         }
     }];
 }

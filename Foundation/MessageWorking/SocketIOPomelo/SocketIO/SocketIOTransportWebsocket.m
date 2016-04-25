@@ -87,13 +87,14 @@ static NSString* kSecureSocketPortURL = @"wss://%@:%d/socket.io/1/websocket/%@";
     [_webSocket send:request];
 }
 
-
-
 # pragma mark -
 # pragma mark WebSocket Delegate Methods
 
 - (void) webSocket:(SRWebSocket *)webSocket didReceiveMessage:(id)message
 {
+    if (!delegate) {
+        return;
+    }
     [delegate onData:message];
 }
 
@@ -104,6 +105,9 @@ static NSString* kSecureSocketPortURL = @"wss://%@:%d/socket.io/1/websocket/%@";
 
 - (void) webSocket:(SRWebSocket *)webSocket didFailWithError:(NSError *)error
 {
+    if (!delegate) {
+        return;
+    }
     DEBUGLOG(@"Socket failed with error ... %@", [error localizedDescription]);
     // Assuming this resulted in a disconnect
     [delegate onDisconnect:error];
@@ -114,6 +118,9 @@ static NSString* kSecureSocketPortURL = @"wss://%@:%d/socket.io/1/websocket/%@";
             reason:(NSString *)reason
           wasClean:(BOOL)wasClean
 {
+    if (!delegate) {
+        return;
+    }
     DEBUGLOG(@"Socket closed. %@", reason);
     [delegate onDisconnect:[NSError errorWithDomain:SocketIOError
                                                code:SocketIOWebSocketClosed

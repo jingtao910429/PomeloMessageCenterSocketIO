@@ -206,4 +206,5 @@ static NSString const *_disconnectCallback = @"__disconnectCallback__";
     _callbacks = nil;
     _delegate = nil;
 }
+
 @end

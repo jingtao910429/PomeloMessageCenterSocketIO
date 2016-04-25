@@ -19,11 +19,12 @@
 #import "NSString+Extension.h"
 #import "UIView+Additions.h"
 
-NSString * const kMessageCellChat   = @"MessageCellChat";
-NSString * const kMessageCellThough = @"MessageCellThough";
-NSString * const kMessageCellTime   = @"MessageCellTime";
-NSString * const kMessageCellSystem = @"MessageCellSystem";
-NSString * const kMessageCellDelete = @"MessageCellDelete";
+NSString * const kMessageCellChat    = @"MessageCellChat";
+NSString * const kMessageCellThough  = @"MessageCellThough";
+NSString * const kMessageCellTime    = @"MessageCellTime";
+NSString * const kMessageCellTopTime = @"MessageCellTopTime";
+NSString * const kMessageCellSystem  = @"MessageCellSystem";
+NSString * const kMessageCellDelete  = @"MessageCellDelete";
 
 @interface MessageCell()<AttViewDelegate>
 
@@ -89,7 +90,7 @@ NSString * const kMessageCellDelete = @"MessageCellDelete";
         [self.sendFailView addGestureRecognizer:self.tapGesture];
         [self.textBackground addGestureRecognizer:self.longPressGesture];
         
-    } else if ([reuseIdentifier isEqualToString:kMessageCellTime]) {
+    } else if ([reuseIdentifier isEqualToString:kMessageCellTime] || [reuseIdentifier isEqualToString:kMessageCellTopTime]) {
         [self.contentView addSubview:self.timeLabel];
         [self.contentView addSubview:self.lineLeft];
         [self.contentView addSubview:self.lineRight];
@@ -139,8 +140,13 @@ NSString * const kMessageCellDelete = @"MessageCellDelete";
             
             strechImage = [[UIImage imageNamed:@"send"] resizableImageWithCapInsets:UIEdgeInsetsMake(28, 8, 7, 15) resizingMode:UIImageResizingModeStretch];
             
+            if (model.animateStatus == NO) {
+                [self.activityIndicator stopAnimating];
+            } else {
+                [self.activityIndicator startAnimating];
+            }
+            
             if (model.isSendFail == NO) {
-                [self beginSendMessage];
                 self.activityIndicator.frame = CGRectMake(self.textBackground.left-20, self.textBackground.bottom-20, 15, 15);
                 self.sendFailView.hidden = YES;
             } else {
@@ -152,7 +158,7 @@ NSString * const kMessageCellDelete = @"MessageCellDelete";
             strechImage = [[UIImage imageNamed:@"recive"] resizableImageWithCapInsets:UIEdgeInsetsMake(28,15, 7, 8) resizingMode:UIImageResizingModeStretch];
         }
         self.textBackground.image = strechImage;
-    } else if ([reuseIdentifier isEqualToString:kMessageCellTime]) {
+    } else if ([reuseIdentifier isEqualToString:kMessageCellTime] || [reuseIdentifier isEqualToString:kMessageCellTopTime]) {
         CGSize size = [model.yearAndMoth sizeWithFont:[UIFont systemFontOfSize:13] maxSize:CGSizeMake(MAXFLOAT, 26)];
         CGFloat x =([UIScreen mainScreen].bounds.size.width- size.width)/2.0f;
         self.timeLabel.frame = CGRectMake(x, 9, size.width, 26);
@@ -170,31 +176,6 @@ NSString * const kMessageCellDelete = @"MessageCellDelete";
         
         self.systemLabel.frame = CGRectMake(5, 5, model.textSize.width, model.textSize.height);
         self.systemLabel.text  = model.text;
-    }
-}
-
-- (void)beginSendMessage
-{
-    if (_clickModel.animateStatus) {
-        [self.activityIndicator startAnimating];
-        _clickModel.animateStatus = YES;
-        _clickModel.isSendFail = NO;
-    } else {
-        [self.activityIndicator stopAnimating];
-    }
-    self.sendFailView.hidden = YES;
-}
-
-- (void)endSendMessageStatus:(BOOL)status
-{
-    [self.activityIndicator stopAnimating];
-    _clickModel.animateStatus = NO;
-    if (status) {
-        self.sendFailView.hidden = YES;
-    } else {
-        self.sendFailView.frame = CGRectMake(self.textBackground.left-20, self.textBackground.bottom-20, 15, 15);
-        self.sendFailView.hidden = NO;
-        _clickModel.isSendFail = YES;
     }
 }
 

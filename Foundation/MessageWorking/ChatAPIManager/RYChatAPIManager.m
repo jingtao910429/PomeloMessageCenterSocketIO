@@ -65,6 +65,7 @@ static RYChatAPIManager *shareManager = nil;
             break;
         case RouteChatTypeFindUsers:
             routeStr = @"chat.chatHandler.findUsers";
+            break;
         default:
             break;
     }
@@ -100,6 +101,9 @@ static RYChatAPIManager *shareManager = nil;
         case NotifyTypeOnRemoveUser:
             notifyStr = @"onRemoveUser";
             break;
+        case NotifyTypeOnAddUser:
+            notifyStr = @"onAddUser";
+            break;
         default:
             break;
     }
@@ -108,17 +112,46 @@ static RYChatAPIManager *shareManager = nil;
 
 + (NSDictionary *)parametersWithType:(BOOL)isConnectInit {
     
-    if (isConnectInit) {
-        return @{@"token":[MessageTool token]}; 
+    if (![MessageTool token]) {
+        
+        NSArray *cookies = [Tool getCookies];
+        
+        NSString *tokenStr = nil;
+        
+        for (int i = 0; i < cookies.count; i ++) {
+            
+            NSString *cookieName = [(NSHTTPCookie *)cookies[i] name];
+            
+            if ([cookieName isEqualToString:@"Token"]) {
+                tokenStr = [(NSHTTPCookie *)cookies[i] value];
+            }
+        }
+        
+        if (tokenStr) {
+            [MessageTool setToken:tokenStr];
+        }else {
+            return [NSDictionary new];
+        }
+        
     }
-    return @{@"token":[MessageTool token]};
+    
+    if (![MessageTool token] || [[MessageTool token] isEqualToString:@""] || [[MessageTool token] isKindOfClass:[NSNull class]]) {
+        return [NSDictionary new];
+    }
+    return [NSDictionary dictionaryWithObjectsAndKeys:[MessageTool token],@"token", nil];
 }
 
 + (NSString *)host {
-    return @"192.168.253.35";
+    //测试环境
+    //return @"testmsg.rongyu100.com";
+    //正式环境
+    return @"msg.rongyu100.com";
 }
 
 + (NSString *)port {
+    //测试环境
+    //return @"13014";
+    //正式环境
     return @"3014";
 }
 

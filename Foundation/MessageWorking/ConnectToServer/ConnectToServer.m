@@ -8,6 +8,8 @@
 
 #import "ConnectToServer.h"
 #import "RYChatAPIManager.h"
+#import "MessageTool.h"
+#import "AppDelegate.h"
 
 @interface ConnectToServer ()<PomeloDelegate>
 
@@ -34,9 +36,14 @@
 
 - (void)chatClientDisconnect
 {
-    [self.pomeloClient disconnectWithCallback:^(id arg , NSString *route) {
-        if ([_delegate respondsToSelector:@selector(connectToServerDisconnectSuccessWithData:)]) {
-            [_delegate connectToServerDisconnectSuccessWithData:arg];
+    AppDelegate *delegate = (AppDelegate *)[[UIApplication sharedApplication] delegate];
+    [delegate.connectTimer invalidate];
+    delegate.connectTimer = nil;
+    
+    [pomeloClient disconnectWithCallback:^(id arg , NSString *route) {
+        [MessageTool setConnectStatus:@"0"];
+        if ([_delegate respondsToSelector:@selector(connectToServerFailureWithData:)]) {
+            [_delegate connectToServerFailureWithData:arg];
         }
     }];
 }
@@ -48,6 +55,12 @@
 
 - (void)connectToSeverGate
 {
+    //－1表示正在连接中
+    if ([[MessageTool connectStatus] isEqualToString:@"-1"]) {
+        return;
+    }else {
+        [MessageTool setConnectStatus:@"-1"];
+    }
     
     [pomeloClient connectToHost:[RYChatAPIManager host] onPort:[[RYChatAPIManager port] intValue] withCallback:^(id callback, NSString *route) {
         
@@ -70,11 +83,11 @@
                     [self connectToServerChat];
                     
                 }else{
+                    
+                    [MessageTool setConnectStatus:@"0"];
+                    
                     if ([_delegate respondsToSelector:@selector(connectToServerFailureWithData:)]) {
                         [_delegate connectToServerFailureWithData:arg];
-                    }else{
-                        //condition是条件表达式，值为YES或NO；desc为异常描述
-                        NSAssert(0,@"connectToGateFailure-方法必须实现");
                     }
                 }
                 
@@ -95,10 +108,10 @@
         
         [pomeloClient connectToHost:self.hostStr onPort:[self.portStr intValue] withCallback:^(id arg, NSString *route) {
             
+            [MessageTool setConnectStatus:@"1"];
+            
             if ([_delegate respondsToSelector:@selector(connectToServerSuccessWithData:)]) {
                 [_delegate connectToServerSuccessWithData:arg];
-            }else{
-                NSAssert(0,@"connectToConnectorSuccess-方法必须实现");
             }
             
         }];

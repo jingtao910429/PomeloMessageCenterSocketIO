@@ -152,7 +152,13 @@ typedef NS_ENUM(NSInteger, NotifyType){
      *  接收历史消息
      */
     
-    NotifyTypeOnChatHistory    = 7 << 4
+    NotifyTypeOnChatHistory    = 7 << 4,
+    
+    /**
+     *  人员添加
+     */
+    
+    NotifyTypeOnAddUser        = 7 << 5
     
 };
 

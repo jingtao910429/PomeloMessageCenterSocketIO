@@ -173,11 +173,11 @@ static NSTimeInterval kNetworkingTimeoutSeconds = 15.0f;
 
 - (void)apiCmdStartLoadData:(RYBaseAPICmd *)apiCmd;
 
-- (void)apiCmd:(RYBaseAPICmd *)apiCmd beforePerformSuccessWithResponse:(NSURLResponse *)response;
-- (void)apiCmd:(RYBaseAPICmd *)apiCmd afterPerformSuccessWithResponse:(NSURLResponse *)response;
+- (void)apiCmd:(RYBaseAPICmd *)apiCmd beforePerformSuccessWithResponse:(NSString *)response;
+- (void)apiCmd:(RYBaseAPICmd *)apiCmd afterPerformSuccessWithResponse:(NSString *)response;
 
-- (void)apiCmd:(RYBaseAPICmd *)apiCmd beforePerformFailWithResponse:(NSURLResponse *)response;
-- (void)apiCmd:(RYBaseAPICmd *)apiCmd afterPerformFailWithResponse:(NSURLResponse *)response;
+- (void)apiCmd:(RYBaseAPICmd *)apiCmd beforePerformFailWithResponse:(NSString *)response;
+- (void)apiCmd:(RYBaseAPICmd *)apiCmd afterPerformFailWithResponse:(NSString *)response;
 
 - (BOOL)apiCmd:(RYBaseAPICmd *)apiCmd shouldCallAPIWithParams:(NSDictionary *)params;
 - (void)apiCmd:(RYBaseAPICmd *)apiCmd afterCallingAPIWithParams:(NSDictionary *)params;

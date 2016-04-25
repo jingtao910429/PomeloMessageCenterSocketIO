@@ -35,7 +35,7 @@ typedef void (^RefreshUserSuccess)();
 @interface RYChatHandler : NSObject
 
 //chat服务器请求所需要的参数
-@property (nonatomic, strong)   NSDictionary *parameters;
+@property (nonatomic, copy)   NSDictionary *parameters;
 //chat请求类型
 @property (nonatomic, assign) NSInteger chatServerType;
 //chat数据模型

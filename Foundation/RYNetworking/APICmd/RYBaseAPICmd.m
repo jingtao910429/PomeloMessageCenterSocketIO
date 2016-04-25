@@ -65,7 +65,7 @@
  */
 - (void)cancelRequest
 {
-    [[RYAPIManager manager] cancelRequestWithRequestID:self.requestId];
+    [[RYAPIManager manager] cancelRequestWithRequestID:_requestId];
 }
 
 /**
@@ -111,8 +111,8 @@
 
 - (void)dealloc
 {
-    if ([self.child respondsToSelector:@selector(isCancelled)]) {
-        if ([self.child isCacelRequest]) {
+    if ([_child respondsToSelector:@selector(isCancelled)]) {
+        if ([_child isCacelRequest]) {
             [self cancelRequest];
         }
     } else {

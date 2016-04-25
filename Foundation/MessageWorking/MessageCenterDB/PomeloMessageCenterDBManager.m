@@ -723,6 +723,7 @@
         
     }
     
+    [MessageTool setDBChange:@"YES"];
 }
 
 - (NSArray *)deleteDataWithTableWithType:(MessageCenterDBManagerType)tableType groupReadType:(GroupReadType)readType  SQLvalue:(NSString *)SQLvalue currentPage:(NSInteger)currentPage isNeedAllData:(BOOL)isNeedAllData{
@@ -737,8 +738,6 @@
     }
     
     [MessageTool setDBChange:@"YES"];
-    
-    
     
     return newDataArr;
 }
@@ -866,7 +865,7 @@
         
         MessageCenterMetadataModel *tempMetadataModel = resultDatas[i];
         
-        NSString *selectMessageSQL = [NSString stringWithFormat:@"select * from (select * from UserMessage where GroupId = '%@' and accountId = '%@' and type = '1' and Status = '1' order by CreateTime desc) limit %d,%d",tempMetadataModel.groupId,tempMetadataModel.accountId,0,1];
+        NSString *selectMessageSQL = [NSString stringWithFormat:@"select * from (select * from UserMessage where GroupId = '%@' and accountId = '%@' and Status = '1' order by CreateTime desc) limit %d,%d",tempMetadataModel.groupId,tempMetadataModel.accountId,0,1];
         
         MessageCenterMessageModel *messageModel = [[MessageCenterMessageModel alloc] init];
         
@@ -1084,6 +1083,8 @@
     [_dataBaseStore updateDataWithSql:messageSQL];
     [_dataBaseStore updateDataWithSql:msgMetadataSql];
     
+    [MessageTool setDBChange:@"YES"];
+    
 }
 
 /**
@@ -1109,6 +1110,8 @@
     NSString *messageSQL = [NSString stringWithFormat:@"delete from UserMessage where accountId = '%@' and  Status = '0' and CreateTime < '%@'",[MessageTool getUserID],timeStr];
     
     [_dataBaseStore updateDataWithSql:messageSQL];
+    
+    [MessageTool setDBChange:@"YES"];
     
 }
 

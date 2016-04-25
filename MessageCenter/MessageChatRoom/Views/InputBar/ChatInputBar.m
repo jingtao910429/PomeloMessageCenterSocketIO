@@ -146,7 +146,10 @@
     }
     self.inputTextView.text = @"";
     self.inputPlaceholder.hidden = NO;
-    [self textViewResignFirstResponder];
+    
+    /*设置键盘*/
+    //[self textViewResignFirstResponder];
+    [[NSNotificationCenter defaultCenter] postNotificationName:UIKeyboardWillChangeFrameNotification object:nil];
 }
 
 
@@ -166,8 +169,45 @@
     }else{
         self.inputPlaceholder.hidden = NO;
     }
-
-    CGSize contentSize = self.inputTextView.contentSize;
+    CGSize contentSize = CGSizeZero;
+    
+    NSInteger newSizeH; //UITextView的实际高度
+    if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 7) {//7.0以上我们需要自己计算高度
+        float fPadding = 16.0; // 8.0px x 2
+        
+        CGSize constraint = CGSizeMake(self.inputTextView.contentSize.width - fPadding, CGFLOAT_MAX);
+        
+//        CGSize size = [self.inputTextView.text sizeWithFont: self.inputTextView.font
+//                                    constrainedToSize:constraint
+//                                        lineBreakMode:UILineBreakModeWordWrap];
+        
+        NSDictionary *attribute = @{NSFontAttributeName:self.inputTextView.font};
+        
+        CGSize size = [self.inputTextView.text boundingRectWithSize:constraint
+                                            options:
+                          NSStringDrawingTruncatesLastVisibleLine |
+                          NSStringDrawingUsesLineFragmentOrigin |
+                          NSStringDrawingUsesFontLeading
+                                         attributes:attribute
+                                            context:nil].size;
+        
+        
+        newSizeH = size.height + 16.0 - 6;
+        if (newSizeH < 34) {
+            newSizeH = 34;
+        }
+        contentSize = CGSizeMake(size.width, newSizeH);
+        
+    }
+    else {
+        newSizeH = self.inputTextView.contentSize.height - 6;
+        if (newSizeH < 34) {
+            newSizeH = 34;
+        }
+        contentSize = CGSizeMake(0, newSizeH);
+    }
+    
+    
     
     if (contentSize.height - kTextChangeHeight > self.inputTextView.height && self.height <= self.maxAutoExpandHeight) {
         
@@ -243,26 +283,27 @@
         CGRect textViewFrame = CGRectInset(backgroundFrame, kTextInsetX, kTextInsetX);
         textViewFrame.size.height = self.height - 2*kTextInsetX;
         textViewFrame.size.width -= 65;
-        
-        if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 7.0) {
-            NSTextStorage* textStorage = [[NSTextStorage alloc] initWithString:@""];
-            NSLayoutManager* layoutManager = [NSLayoutManager new];
-            [textStorage addLayoutManager:layoutManager];
-            self.textContainer = [[NSTextContainer alloc] initWithSize:textViewFrame.size];
-            [layoutManager addTextContainer:self.textContainer];
-            
-            _inputTextView = [[UITextView alloc] initWithFrame:textViewFrame textContainer:self.textContainer];
-        } else {
-            _inputTextView = [[UITextView alloc] initWithFrame:textViewFrame];
-        }
+//ps:这个方法会造成文本只显示第一行
+//        if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 7.0) {
+//            NSTextStorage* textStorage = [[NSTextStorage alloc] initWithString:@""];
+//            NSLayoutManager* layoutManager = [NSLayoutManager new];
+//            [textStorage addLayoutManager:layoutManager];
+//            self.textContainer = [[NSTextContainer alloc] initWithSize:textViewFrame.size];
+//            [layoutManager addTextContainer:self.textContainer];
+//            
+//            _inputTextView = [[UITextView alloc] initWithFrame:textViewFrame textContainer:self.textContainer];
+//        } else {
+//        }
+        _inputTextView = [[UITextView alloc] initWithFrame:textViewFrame];
         _inputTextView.delegate         = self;
         _inputTextView.font             = [UIFont systemFontOfSize:15.0f];
         _inputTextView.contentInset     = UIEdgeInsetsMake(-4,0,-4,0);
         _inputTextView.opaque           = NO;
         _inputTextView.backgroundColor  = [UIColor clearColor];
-        _inputTextView.showsHorizontalScrollIndicator = NO;
+        _inputTextView.showsHorizontalScrollIndicator = YES;
         _inputTextView.returnKeyType = UIReturnKeySend;
         _inputTextView.enablesReturnKeyAutomatically = YES;
+        _inputTextView.scrollEnabled = YES;
     }
     return _inputTextView;
 }

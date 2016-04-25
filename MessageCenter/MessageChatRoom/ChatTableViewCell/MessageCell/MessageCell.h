@@ -12,6 +12,7 @@
 extern NSString * const kMessageCellChat;
 extern NSString * const kMessageCellThough;
 extern NSString * const kMessageCellTime;
+extern NSString * const kMessageCellTopTime;
 extern NSString * const kMessageCellSystem;
 extern NSString * const kMessageCellDelete;
 
@@ -45,20 +46,6 @@ extern NSString * const kMessageCellDelete;
 
 @property (nonatomic, weak) id<MessageCellDelegate> delegate;
 @property (nonatomic, weak) UITapGestureRecognizer *tapBack;
-/**
- *   @author xiaerfei, 15-11-02 09:11:44
- *
- *   开始发送数据 菊花旋转
- */
-- (void)beginSendMessage;
-/**
- *   @author xiaerfei, 15-11-02 09:11:10
- *
- *   结束菊花旋转 并设置此时消息的状态
- *
- *   @param status YES：消息发送成功   NO：发送消息失败
- */
-- (void)endSendMessageStatus:(BOOL)status;
 /**
  *   @author xiaerfei, 15-11-02 09:11:13
  *

@@ -10,9 +10,7 @@
 #import "RYMessageCenterVC.h"
 #import "RDVTabBarController.h"
 #import "RDVTabBarController.h"
-#import "CDRTranslucentSideBar.h"
 #import "MessageTool.h"
-
 
 @interface TabBarRootViewController ()<CustomerTabBarDelegate>
 
@@ -23,7 +21,8 @@
 #pragma mark - life cycle
 - (void)viewDidLoad {
     [super viewDidLoad];
-    
+    //注册有无未读消息
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(haveUnreadMessage:) name:UnReadMessage_Notification object:nil];
     [self updateUI];
     self.title = @"消息";
 }
@@ -46,8 +45,8 @@
     
     self.tabBar.hidden = YES;
     
-    [Tool backButton:self btnText:@"消息" action:@selector(sliderClick) addTarget:self iconName:@"original_back_main_topBar_Icon"];
-    self.tabBarView = [[CustomerTabBarView alloc] initWithFrame:CGRectMake(0, SCREEN_HEIGHT - 113, SCREEN_WIDTH, 49)];
+    [Tool backButton:self btnText:@"消息" action:@selector(sliderClick) addTarget:self iconName:@"ryback_main_topBar_Icon_black"];
+    self.tabBarView = [[CustomerTabBarView alloc] initWithFrame:CGRectMake(0, SCREEN_BOUND_HEIGHT - 113, SCREEN_BOUND_WIDTH, 49)];
     
     self.tabBarView.delegate = self;
     self.tabBarView.backgroundColor = [Tool getBackgroundColor];
@@ -63,6 +62,7 @@
     
     
 }
+
 #pragma mark - CustomDelegate 
 #pragma mark  CustomerTabBarDelegate
 -(void)tabBar:(CustomerTabBarView *)tabBar selectedFrom:(NSInteger)from to:(NSInteger)to
@@ -73,10 +73,22 @@
 
 - (void)sliderClick
 {
-    [self.rdv_tabBarController.sideBar startShow:SCREEN_BOUND_WIDTH - SCREEN_BOUND_WIDTH/3];
-    [self.rdv_tabBarController.sideBar showAnimatedFrom:YES deltaX:SCREEN_BOUND_WIDTH - SCREEN_BOUND_WIDTH/3];
-    self.rdv_tabBarController.sideBar.isCurrentPanGestureTarget = YES;
+    [self.mm_drawerController toggleDrawerSide:MMDrawerSideLeft animated:YES completion:nil];
+}
+//有无未读消息通知
+- (void)haveUnreadMessage:(NSNotification *)notification
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSString *resultStr = (NSString *)notification.object;
+
+        if ([resultStr isEqualToString:@"YES"]) {
+            self.tabBarView.dotLabel.hidden = NO;
+        }
+        else
+        {
+            self.tabBarView.dotLabel.hidden = YES;
+        }
+    });
     
 }
-
 @end

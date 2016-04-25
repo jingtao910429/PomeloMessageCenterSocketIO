@@ -13,14 +13,15 @@
 #import "RYChatHandler.h"
 #import "ChatViewRoomController.h"
 #import "RDVTabBarController.h"
-#import "CDRTranslucentSideBar.h"
 #import "MJRefresh.h"
 #import "TabBarRootViewController.h"
 #import "NSString+Extension.h"
 #import "ConnectToServer.h"
 #import "RYChatHandler.h"
 #import "AppDelegate.h"
-
+#import "MSCMoreOptionTableViewCell.h"
+#import "RDVTabBarController.h"
+#import "MessageTool.h"
 
 #define Header_Height 65
 #define Connect_TableHeight (64 + 44 + 49)
@@ -35,10 +36,9 @@
 
 @property (nonatomic, strong) RYChatHandler *topChatHandler;
 
-
 @property (nonatomic, strong) NSMutableArray *dataSource;
 
-//@property (nonatomic, retain) UIRefreshControl *refreshControl;
+@property (nonatomic, retain) UIRefreshControl *refreshControl;
 
 @property (nonatomic, assign) NSInteger PageIndex;
 //获取组信息（如果本地数据已过期）
@@ -60,7 +60,7 @@
     
     //断开服务注册通知
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ConnectStateNotificationStr:) name:[MessageTool ConnectStateNotificationStr] object:nil];
-    
+     
     [self setBodyUI];
     [self initData];
     
@@ -70,9 +70,22 @@
 {
     [super viewWillAppear:animated];
     
+    AppDelegate *delegate = (AppDelegate*)[[UIApplication sharedApplication] delegate];
+    [delegate.rdvtabBarController setTabBarHidden:NO animated:YES];
+    [delegate.drawerController setOpenDrawerGestureModeMask:MMOpenDrawerGestureModeAll];
+    
     [MessageTool setDBChange:@"YES"];
     
     [self getGroupWithTypeNeedAllData:[NSNumber numberWithBool:YES]];
+    
+    if (![[MessageTool connectStatus] isEqualToString:@"0"]) {
+        [self showConnectUI];
+    }else {
+        [self showDisConnect];
+    }
+    
+    
+    [self addEmptyView];
 }
 
 - (void)didReceiveMemoryWarning {
@@ -88,10 +101,10 @@
 
 - (void)initData{
     
-    self.groupType = 1;
-    self.PageIndex = 1;
+    self.groupType            = 1;
+    self.PageIndex            = 1;
     self.groupRequestFinished = YES;
-    
+    self.dataSource           = [[NSMutableArray alloc] initWithCapacity:20];
 }
 
 - (void)setBodyUI{
@@ -115,10 +128,13 @@
     
     self.readTableViewInfo.hidden = YES;
     self.unReadTableViewInfo.hidden = YES;
+    
+    [self.allTableViewInfo addSubview:self.refreshControl];
 
     //上拉加载
     self.allTableViewInfo.footer = [MJRefreshBackNormalFooter footerWithRefreshingTarget:self refreshingAction:@selector(pollUpReloadData)];
 }
+
 //设置顶部选项栏
 - (void)addHeadView:(UIView *)headView{
     
@@ -375,6 +391,9 @@
 - (void)connectToChatSuccess:(RYChatHandler *)chatHandler result:(id)data requestId:(NSInteger)requestId{
     
     [self.allTableViewInfo.footer endRefreshing];
+    if (_refreshControl && _refreshControl.isRefreshing) {
+        [_refreshControl endRefreshing];
+    }
     
     if (chatHandler == self.getGroupsChat) {
         
@@ -392,63 +411,6 @@
             }else{
                 
                 //如果添加数据库数据失败，获取本地
-                
-                /*
-                NSMutableDictionary *grouptempDict = [[NSMutableDictionary alloc] initWithDictionary:tempDict];
-                
-                if (grouptempDict[@"groups"] && ![grouptempDict[@"groups"] isKindOfClass:[NSNull class]]) {
-                    
-                    NSArray *groups = grouptempDict[@"groups"];
-                    
-                    for (int i = 0; i < groups.count; i ++) {
-                        
-                        NSDictionary *grouptempDict = groups[i];
-                        
-                        NSMutableDictionary *groupInfo = [[NSMutableDictionary alloc] init];
-                        
-                        [groupInfo setValue:[NSString stringWithFormat:@"%@",grouptempDict[@"createTime"]] forKey:@"CreateTime"];
-                        [groupInfo setValue:[NSString stringWithFormat:@"%@",grouptempDict[@"companyName"]] forKey:@"CompanyName"];
-                        [groupInfo setValue:[NSString stringWithFormat:@"%@",grouptempDict[@"groupName"]] forKey:@"GroupName"];
-                        [groupInfo setValue:[NSString stringWithFormat:@"%@",grouptempDict[@"groupType"]] forKey:@"GroupType"];
-                        [groupInfo setValue:[MessageTool getUserID] forKey:@"AccountId"];
-                        [groupInfo setValue:[NSString stringWithFormat:@"%@",grouptempDict[@"groupId"]] forKey:@"GroupId"];
-                        
-                        if (grouptempDict[@"lastedMsg"] && ![grouptempDict[@"lastedMsg"] isKindOfClass:[NSNull class]]) {
-                            
-                            [groupInfo setValue:[NSString stringWithFormat:@"%@",grouptempDict[@"lastedMsg"][@"msgId"]] forKey:@"LastedMsgId"];
-                            [groupInfo setValue:[NSString stringWithFormat:@"%@",grouptempDict[@"lastedMsg"][@"sender"]] forKey:@"LastedMsgSenderName"];
-                            
-                            if (grouptempDict[@"lastedMsg"][@"time"]) {
-                                
-                                [groupInfo setValue:[NSString stringWithFormat:@"%@",grouptempDict[@"lastedMsg"][@"time"]] forKey:@"LastedMsgTime"];
-                                
-                            }else{
-                                
-                                [groupInfo setValue:[NSString stringWithFormat:@"%@",grouptempDict[@"createTime"]] forKey:@"LastedMsgTime"];
-                                
-                            }
-                            
-                            
-                            [groupInfo setValue:[NSString stringWithFormat:@"%@",grouptempDict[@"lastedMsg"][@"content"]] forKey:@"LastedMsgContent"];
-                            
-                        }else{
-                            
-                            [groupInfo setValue:[NSString stringWithFormat:@"%@",grouptempDict[@"createTime"]] forKey:@"LastedMsgTime"];
-                            
-                        }
-                        
-                        [groupInfo setValue:[NSString stringWithFormat:@"%@",grouptempDict[@"unReadMsgCount"]] forKey:@"UnReadMsgCount"];
-                        
-                        
-                        MessageCenterMetadataModel *modelSingle = [[MessageCenterMetadataModel alloc] init];
-                        [modelSingle setValuesForKeysWithDictionary:groupInfo];
-                        
-                        [self.dataSource addObject:modelSingle];
-                    }
-
-                }
-                 
-                 */
                 
             }
             
@@ -470,6 +432,9 @@
     
     if (chatHandler == self.getGroupsChat) {
         [self.allTableViewInfo.footer endRefreshing];
+        if (_refreshControl && _refreshControl.isRefreshing) {
+            [_refreshControl endRefreshing];
+        }
     }
     
 }
@@ -507,7 +472,6 @@
             self.unReadTableViewInfo.hidden = YES;
             self.groupType = 1;
             [self.allTableViewInfo reloadData];
-
             break;
         case 11://已读
             self.allTableViewInfo.hidden = YES;
@@ -524,13 +488,12 @@
             self.unReadTableViewInfo.hidden = NO;
             self.groupType = 3;
             [self.unReadTableViewInfo reloadData];
-
             break;
             
         default:
             break;
     }
-    
+    [self addEmptyView];
 }
 - (void)gotoBack
 {
@@ -539,8 +502,6 @@
 
 //上拉加载
 - (void)pollUpReloadData {
-    
-    NSLog(@"上拉加载");
     
     if (!self.groupRequestFinished) {
         return;
@@ -586,10 +547,16 @@
         [MessageTool setDBChange:@"NO"];
         
         self.dataSource = [[NSMutableArray alloc] initWithArray:[[PomeloMessageCenterDBManager shareInstance] fetchGroupsWithGroupReadType:GroupReadTypeAll currentPage:self.PageIndex isNeedAllData:[isNeedAllData boolValue]]];
-        
+
         if (!self.dataSource || self.dataSource.count == 0) {
             [self.getGroupsChat chat];
+            [_refreshControl endRefreshing];
+
         }else{
+            
+            if (_refreshControl && _refreshControl.isRefreshing) {
+                [_refreshControl endRefreshing];
+            }
             
             [self seperateDatas];
             
@@ -635,6 +602,7 @@
             //消息中心tabbar消息未读提示
             [(TabBarRootViewController *)self.tabBarController tabBarView].dotLabel.hidden = YES;
             //主tabbar上的消息未读提示
+            
             self.rdv_tabBarController.tabBar.dotLabel.hidden = YES;
 
         }else{
@@ -685,13 +653,26 @@
 
 }
 
+//下拉刷新
+
+//下拉刷新
+- (void)reload:(__unused id)sender {
+    if (!self.disConnectLabel.hidden) {
+        [_refreshControl endRefreshing];
+        return;
+    }
+    self.PageIndex = 1;
+    [MessageTool setDBChange:@"YES"];
+    [self getGroupWithTypeNeedAllData:[NSNumber numberWithBool:YES]];
+}
+
 -(void)showDisConnect
 {
     self.disConnectLabel.hidden = NO;
     self.headView.frame = CGRectMake(0, CGRectGetMaxY(self.disConnectLabel.frame), SCREEN_BOUND_WIDTH, 44);
-    self.allTableViewInfo.frame = CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_BOUND_WIDTH, SCREEN_HEIGHT - DisConnect_TableHeight) ;
-    self.readTableViewInfo.frame = CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_BOUND_WIDTH, SCREEN_HEIGHT - DisConnect_TableHeight) ;
-    self.unReadTableViewInfo.frame = CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_BOUND_WIDTH, SCREEN_HEIGHT - DisConnect_TableHeight) ;
+    self.allTableViewInfo.frame = CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_BOUND_WIDTH, SCREEN_BOUND_HEIGHT - DisConnect_TableHeight) ;
+    self.readTableViewInfo.frame = CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_BOUND_WIDTH, SCREEN_BOUND_HEIGHT - DisConnect_TableHeight) ;
+    self.unReadTableViewInfo.frame = CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_BOUND_WIDTH, SCREEN_BOUND_HEIGHT - DisConnect_TableHeight) ;
 
 }
 
@@ -700,30 +681,80 @@
 {
     self.disConnectLabel.hidden = YES;
     self.headView.frame = CGRectMake(0, 0, SCREEN_BOUND_WIDTH, 44);
-    self.allTableViewInfo.frame = CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_WIDTH, SCREEN_HEIGHT - Connect_TableHeight);
-    self.readTableViewInfo.frame = CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_WIDTH, SCREEN_HEIGHT - Connect_TableHeight);
-    self.unReadTableViewInfo.frame = CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_WIDTH, SCREEN_HEIGHT - Connect_TableHeight);
+    self.allTableViewInfo.frame = CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_BOUND_WIDTH, SCREEN_BOUND_HEIGHT - Connect_TableHeight);
+    self.readTableViewInfo.frame = CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_BOUND_WIDTH, SCREEN_BOUND_HEIGHT - Connect_TableHeight);
+    self.unReadTableViewInfo.frame = CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_BOUND_WIDTH, SCREEN_BOUND_HEIGHT - Connect_TableHeight);
 }
 
 //断开服务通知
 - (void)ConnectStateNotificationStr:(NSNotification *)notification
 {
+
     dispatch_async(dispatch_get_main_queue(), ^{
         NSString *resultStr = (NSString *)notification.object;
-        if ([resultStr isEqualToString:@"YES"] && self.headView.origin.y != 0) {
+        if (([resultStr isEqualToString:@"1"] || [resultStr isEqualToString:@"-1"]) && self.headView.origin.y != 0) {
             [self showConnectUI];
-        }else if ([resultStr isEqualToString:@"NO"] && self.headView.origin.y == 0) {
+        }else if ([resultStr isEqualToString:@"0"] && self.headView.origin.y == 0) {
+            [self.allTableViewInfo.footer endRefreshing];
+
             [self showDisConnect];
         }
     });
+     
 }
-
+//处理空页面
+-(void)addEmptyView
+{
+    if (self.groupType == 2) {
+        if (self.readDataSource.count == 0) {
+            if (![self.readTableViewInfo viewWithTag:2222]) {
+                
+                [self createCustomerEmptyView:@"暂无已读消息" withFrame:CGRectMake(0, CGRectGetMaxY(self.headView.frame) - 44, SCREEN_BOUND_WIDTH, SCREEN_BOUND_HEIGHT - Connect_TableHeight) withView:self.readTableViewInfo] ;
+            }
+        }
+        else
+        {
+            UIView *emptyView = [self.readTableViewInfo viewWithTag:2222];
+            [emptyView removeFromSuperview];
+        }
+        
+    }
+    else if (self.groupType == 3)
+    {
+        if (self.unreadDataSource.count == 0) {
+            if (![self.unReadTableViewInfo viewWithTag:2222]) {
+                
+                [self createCustomerEmptyView:@"暂无未读消息" withFrame:CGRectMake(0, CGRectGetMaxY(self.headView.frame) - 44, SCREEN_BOUND_WIDTH, SCREEN_BOUND_HEIGHT - Connect_TableHeight) withView:self.unReadTableViewInfo] ;
+            }
+        }
+        else
+        {
+            UIView *emptyView = [self.unReadTableViewInfo viewWithTag:2222];
+            [emptyView removeFromSuperview];
+        }
+        
+    }
+    else
+    {
+        if (self.dataSource.count == 0) {
+            if (![self.allTableViewInfo viewWithTag:2222]) {
+                
+                [self createCustomerEmptyView:@"暂无消息" withFrame:CGRectMake(0, CGRectGetMaxY(self.headView.frame) - 44, SCREEN_BOUND_WIDTH, SCREEN_BOUND_HEIGHT - Connect_TableHeight) withView:self.allTableViewInfo] ;
+            }
+        }
+        else
+        {
+            UIView *emptyView = [self.allTableViewInfo viewWithTag:2222];
+            [emptyView removeFromSuperview];
+        }
+    }
+}
 #pragma mark - getters and setters
 
 - (UITableView *)allTableViewInfo{
     
     if (!_allTableViewInfo) {
-        _allTableViewInfo = [[UITableView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_WIDTH, SCREEN_HEIGHT - Connect_TableHeight) style:UITableViewStyleGrouped];
+        _allTableViewInfo = [[UITableView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_BOUND_WIDTH, SCREEN_BOUND_HEIGHT - Connect_TableHeight) style:UITableViewStyleGrouped];
         _allTableViewInfo.backgroundColor = [Tool getBackgroundColor];
         _allTableViewInfo.delegate = self;
         _allTableViewInfo.dataSource = self;
@@ -731,10 +762,21 @@
     
     return _allTableViewInfo;
 }
+
+- (UIRefreshControl *)refreshControl {
+    
+    if (!_refreshControl) {
+        
+        _refreshControl = [[UIRefreshControl alloc] initWithFrame:CGRectMake(0.0f, 0.0f, _allTableViewInfo.frame.size.width, -Header_Height)];
+        [_refreshControl addTarget:self action:@selector(reload:) forControlEvents:UIControlEventValueChanged];
+    }
+    return _refreshControl;
+}
+
 - (UITableView *)readTableViewInfo{
     
     if (!_readTableViewInfo) {
-        _readTableViewInfo = [[UITableView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_WIDTH, SCREEN_HEIGHT - Connect_TableHeight) style:UITableViewStyleGrouped];
+        _readTableViewInfo = [[UITableView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_BOUND_WIDTH, SCREEN_BOUND_HEIGHT - Connect_TableHeight) style:UITableViewStyleGrouped];
         _readTableViewInfo.backgroundColor = [Tool getBackgroundColor];
         _readTableViewInfo.delegate = self;
         _readTableViewInfo.dataSource = self;
@@ -745,7 +787,7 @@
 - (UITableView *)unReadTableViewInfo{
     
     if (!_unReadTableViewInfo) {
-        _unReadTableViewInfo = [[UITableView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_WIDTH, SCREEN_HEIGHT - Connect_TableHeight) style:UITableViewStyleGrouped];
+        _unReadTableViewInfo = [[UITableView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(self.headView.frame), SCREEN_BOUND_WIDTH, SCREEN_BOUND_HEIGHT - Connect_TableHeight) style:UITableViewStyleGrouped];
         _unReadTableViewInfo.backgroundColor = [Tool getBackgroundColor];
         _unReadTableViewInfo.delegate = self;
         _unReadTableViewInfo.dataSource = self;

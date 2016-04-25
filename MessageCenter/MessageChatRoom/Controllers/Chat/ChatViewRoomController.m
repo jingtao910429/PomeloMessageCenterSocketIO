@@ -24,6 +24,7 @@
 #import "NSString+Extension.h"
 
 #import "ChatViewRoomController+ChatViewRoom.h"
+#import "AppDelegate.h"
 
 @interface ChatViewRoomController ()<UITableViewDataSource, UITableViewDelegate,ChatInputBarDelegate,MessageCellDelegate>
 {
@@ -34,8 +35,7 @@
 @property (nonatomic, strong) RYChatHandler *readChatHandler;
 //getMsg
 @property (nonatomic, strong) RYChatHandler *getMsgChatHandler;
-/// 消息列表数组
-@property (nonatomic, copy) NSMutableArray *messageDataModelArray;
+
 @property (nonatomic, copy) NSMutableArray *reSendMessageArray;
 /// 发送时 messageId 和 Model 对应
 @property (nonatomic, copy) NSMutableDictionary *sendMessageDict;
@@ -54,7 +54,7 @@
 /// 标识本地DB的历史消息是否已经拉取完成
 @property (nonatomic, assign) BOOL isLocalHistoryMessageOver;
 /// 记录是否第一次拉取完成数据，以便tableView最后一条数据能展示出来
-/// 1:本地拉取数据20条 2:去服务器拉取数据 3:第一次拉取完成
+/// 1:本地拉取数据20条 2:去服务器拉取数据 3:第一次拉取完成 4:断网后重新拉取消息
 @property (nonatomic, assign) NSInteger isFirstLoadMessage;
 /// 拉取数据的数量
 @property (nonatomic, assign) NSInteger fetchDataNumber;
@@ -62,6 +62,8 @@
 @property (nonatomic, assign) BOOL isDelete;
 /// 是否连接成功
 @property (nonatomic, assign) BOOL isConnect;
+///  是否下拉刷新
+@property (nonatomic, assign) BOOL isGetMsgPullDownLoad;
 
 @property (weak, nonatomic) IBOutlet UITableView *tableView;
 - (IBAction)touchEndEidt:(id)sender;
@@ -82,6 +84,10 @@
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    
+    AppDelegate *delegate = (AppDelegate*)[[UIApplication sharedApplication] delegate];
+    [delegate.rdvtabBarController setTabBarHidden:YES animated:YES];
+    [delegate.drawerController setOpenDrawerGestureModeMask:MMOpenDrawerGestureModeNone];
     
     [self.navigationController.navigationBar setBackgroundImage:[[UIImage alloc] init] forBarMetrics:UIBarMetricsDefault];
     self.navigationController.navigationBar.shadowImage = [[UIImage alloc] init];
@@ -124,9 +130,11 @@
     _userId  = [MessageTool getUserID];
     _fetchDataNumber = kFetchMessageNumber;
     
-    self.isConnect = [[MessageTool connectState] boolValue];
+    self.isConnect = ([[MessageTool connectStatus] isEqualToString:@"0"] ? NO:YES);
     
 //    self.isDelete = YES;
+    
+    //[self.getMembersAPICmd loadData];
     ////////////载入消息///////////////
     [self loadNewData];
 }
@@ -152,8 +160,17 @@
     ////////////配置下拉刷新///////////////
     [self addHeaderRefreshWithAction:@"loadNewData"];
     
-    self.moreMessageView.hidden = self.isConnect;
+//    self.moreMessageView.hidden = YES;
     [self disconnectViewHide:self.isConnect];
+}
+
+- (void)refreshTableView {
+    _isLocalHistoryMessageOver = NO;
+    [_messageDataModelArray removeAllObjects];
+    [self.tableView reloadData];
+    _fetchUserMessageTime = nil;
+    _isFirstLoadMessage = 2;
+    [self loadNewData];
 }
 
 #pragma mark - System Delegate
@@ -163,7 +180,11 @@
     if (self.isDelete) {
         return 1;
     } else {
-        return _messageDataModelArray.count;
+        if (_messageDataModelArray.count != 0) {
+            return _messageDataModelArray.count + 1;
+        } else {
+            return _messageDataModelArray.count;
+        }
     }
 }
 
@@ -176,21 +197,30 @@
         self.tableView.scrollEnabled = NO;
         cell = [self tableView:tableView reuseIdentifier:kMessageCellDelete];
     } else {
-        MessageModel *message = _messageDataModelArray[indexPath.row];
         
-        if (message.messageType == MessageTypeTime) {
-            cell = [self tableView:tableView reuseIdentifier:kMessageCellTime];
-            [cell configData:message reuseIdentifier:kMessageCellTime];
-        } else if (message.messageType == MessageTypeChat) {
-            cell = [self tableView:tableView reuseIdentifier:kMessageCellChat];
-            cell.delegate = self;
-            [cell configData:message reuseIdentifier:kMessageCellChat];
+        if (indexPath.row == 0 && _messageDataModelArray.count != 0 ) {
+            //顶部的时间轴
+            cell = [self tableView:tableView reuseIdentifier:kMessageCellTopTime];
+            MessageModel *firstModel = _messageDataModelArray.firstObject;
+            MessageModel *messageModel = [[MessageModel alloc] init];
+            messageModel.yearAndMoth = firstModel.yearAndMoth;
+            messageModel.messageType = MessageTypeTime;
+            [cell configData:messageModel reuseIdentifier:kMessageCellTopTime];
         } else {
-            cell = [self tableView:tableView reuseIdentifier:kMessageCellSystem];
-            [cell configData:message reuseIdentifier:kMessageCellSystem];
+            MessageModel *message = _messageDataModelArray[indexPath.row - 1];
+            if (message.messageType == MessageTypeTime) {
+                cell = [self tableView:tableView reuseIdentifier:kMessageCellTime];
+                [cell configData:message reuseIdentifier:kMessageCellTime];
+            } else if (message.messageType == MessageTypeChat) {
+                cell = [self tableView:tableView reuseIdentifier:kMessageCellChat];
+                cell.delegate = self;
+                [cell configData:message reuseIdentifier:kMessageCellChat];
+            } else {
+                cell = [self tableView:tableView reuseIdentifier:kMessageCellSystem];
+                [cell configData:message reuseIdentifier:kMessageCellSystem];
+            }
         }
     }
-    
     return cell;
 }
 
@@ -199,11 +229,15 @@
     if (self.isDelete) {
         return SCREEN_BOUND_HEIGHT - 64 - 40 - 40;
     } else {
-        MessageModel *message = _messageDataModelArray[indexPath.row];
-        if (message.messageType == MessageTypeTime) {
+        if (indexPath.row == 0) {
             return 44;
         } else {
-            return message.cellHeght;
+            MessageModel *message = _messageDataModelArray[indexPath.row - 1];
+            if (message.messageType == MessageTypeTime) {
+                return 44;
+            } else {
+                return message.cellHeght;
+            }
         }
     }
 }
@@ -227,6 +261,7 @@
         NSArray *msgs = data[@"msgs"];
         NSArray *rever = [[msgs reverseObjectEnumerator] allObjects];
         NSMutableArray *array = [[NSMutableArray alloc] init];
+        
         for (NSDictionary *info in rever) {
             MessageModel *model = nil;
             if ((info[@"from"] != nil) && ([info[@"from"] isEqualToString:_userId])) {
@@ -239,21 +274,21 @@
                 [array addObject:model];
             }
         }
-
+        
         [self messageDataModelArrayAddModels:array completeFinishBlock:^{
             if (_messageDataModelArray.count >= 1) {
                 NSIndexPath *indexPath = [NSIndexPath indexPathForItem:0 inSection:0];
                 if (_isFirstLoadMessage == 2) {
                     _isFirstLoadMessage = 3;
-                    indexPath = [NSIndexPath indexPathForItem:_messageDataModelArray.count - 1 inSection:0];
+                    indexPath = [NSIndexPath indexPathForItem:_messageDataModelArray.count inSection:0];
                 }
                 [self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionTop animated:NO];
+                _isGetMsgPullDownLoad = NO;
+                if (self.tableView.header.isRefreshing) {
+                    [self.tableView.header endRefreshing];
+                }
             }
         }];
-        
-        if (self.tableView.header.isRefreshing) {
-            [self.tableView.header endRefreshing];
-        }
     }
 }
 - (void)connectToChatFailure:(RYChatHandler *)chatHandler result:(id)error requestId:(NSInteger)requestId
@@ -321,20 +356,84 @@
 {
     id callBackData = notification.object;
     NSDictionary *userInfo = notification.userInfo;
+    
+    /*
+    if (callBackData[@"type"] && ![callBackData[@"type"] isKindOfClass:[NSNull class]] && ![callBackData[@"groupId"] isEqualToString:_groupId]) {
+        return;
+    }
+    
     //去除不是一个群组的消息
-    if (![callBackData[@"toGroupId"] isEqualToString:_groupId]) {
+    if ((!callBackData[@"type"] || [callBackData[@"type"] isKindOfClass:[NSNull class]]) && ![callBackData[@"toGroupId"] isEqualToString:_groupId]) {
+        return;
+    }
+    */
+    
+    if ((callBackData[@"toGroupId"] && ![callBackData[@"toGroupId"] isEqualToString:_groupId]) || (callBackData[@"groupId"] && ![callBackData[@"groupId"] isEqualToString:_groupId])) {
         return;
     }
     
     if (userInfo[@"route"] && [userInfo[@"route"] isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnApproveStatusChanged]]) {
-        
         if (callBackData[@"creditApplicationStatus"] && ![callBackData[@"creditApplicationStatus"] isKindOfClass:[NSNull class]]) {
             // 信贷申请审核状态
             int type = [callBackData[@"creditApplicationStatus"] intValue];
+            if (_messageDataModelArray.count > 0) {
+                MessageModel *lastModel = _messageDataModelArray.lastObject;
+                if ([lastModel.messageId isEqualToString:callBackData[@"_id"]]) {
+                    return;
+                }
+            }
             NSString *appStatusStr = [Tool getApplyingStatus:type];
             [self.applicationStatusView updateAplicationStatusText:appStatusStr];
+            
+            __weak typeof(self)  weakSelf = self;
+            self.applicationStatusView.ApplicationStatusViewBlock = ^ () {
+                
+                ApplyForProgressDetail *applyForProgressDetail = [[ApplyForProgressDetail alloc] init];
+                applyForProgressDetail.approveStatus = type;
+                applyForProgressDetail.isHideSection = YES;
+                [weakSelf.navigationController pushViewController:applyForProgressDetail animated:YES];
+                
+            };
+            
+            MessageModel *model = [MessageModel parseNotifyData:callBackData modelType:MessageModelTypeOther];
+            [_messageDataModelArray addObject:model];
+            [self.tableView reloadData];
         }
-    }else if (userInfo[@"route"] && [userInfo[@"route"] isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnRemoveUser]]) {
+    } else if (userInfo[@"route"] && [userInfo[@"route"] isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnAddUser]]) {
+        if (_messageDataModelArray.count > 0) {
+            MessageModel *lastModel = _messageDataModelArray.lastObject;
+            if ([lastModel.messageId isEqualToString:callBackData[@"_id"]]) {
+                return;
+            }
+        }
+        NSDictionary *callData = callBackData;
+        NSMutableDictionary *callInfo = [[NSMutableDictionary alloc] init];
+
+        [callData enumerateKeysAndObjectsUsingBlock:^(NSString* key, id  _Nonnull obj, BOOL * _Nonnull stop) {
+            if ([key isEqualToString:@"AddedUsers"]) {
+                NSArray *userInfoArray = obj;
+                NSMutableString *contentString = [[NSMutableString alloc] init];
+                for (NSDictionary *info in userInfoArray) {
+                    NSString *userName = info[@"userName"];
+                    if (userName.length != 0) {
+                        [contentString appendFormat:@"%@,",userName];
+                    }
+                }
+                if (contentString.length > 0) {
+                    [contentString deleteCharactersInRange:NSMakeRange(contentString.length-1, 1)];
+                    [contentString appendString:@"加入群组"];
+                    callInfo[@"content"] = contentString;
+                }
+            } else {
+                if ([key isEqualToString:@"content"] == NO) {
+                    callInfo[key] = obj;
+                }
+            }
+        }];
+        MessageModel *model = [MessageModel parseNotifyData:callInfo modelType:MessageModelTypeOther];
+        [_messageDataModelArray addObject:model];
+        [self.tableView reloadData];
+    } else if (userInfo[@"route"] && [userInfo[@"route"] isEqualToString:[RYChatAPIManager notifyWithType:NotifyTypeOnRemoveUser]]) {
         
         if (callBackData[@"type"] != nil && ([callBackData[@"type"] integerValue] == 103 || [callBackData[@"type"] integerValue] == 104)) {
             NSArray *toUsers = [NSArray arrayWithArray:callBackData[@"toUsers"]];
@@ -386,7 +485,8 @@
                 NSArray *time       = [MessageModel parseTime:callBackData[@"time"]];
                 model.yearAndMoth   = [time firstObject];
                 model.time          = [time lastObject];
-
+                model.animateStatus = NO;
+                model.isSendFail    = NO;
                 [self performSelector:@selector(delayMessageRefreshAction:) withObject:@{@"status":@(YES),@"model":model} afterDelay:0.5f];
                 [_sendMessageDict removeObjectForKey:callBackData[@"clientMsgId"]];
                 if ([model.clientMsgId isEqualToString:_reSendMessageModel.clientMsgId]) {
@@ -407,7 +507,7 @@
  */
 - (void)disConnectNotificationStr:(NSNotification *)notification
 {
-    self.isConnect = [notification.object boolValue];
+    self.isConnect = ([notification.object isEqualToString:@"0"] ? NO : YES);
     [self disconnectViewHide:self.isConnect];
 }
 /**
@@ -468,6 +568,7 @@
 - (void)loadNewData
 {
     if (_isLocalHistoryMessageOver) {
+        
         MessageModel *model = [self selectModelOfMessageSendArray:NO];
         [self getHistoryMessageWithCount:kFetchMessageNumber messageId:model.messageId==nil?@"":model.messageId];
         return;
@@ -485,29 +586,40 @@
     }
     
     if (historyArray.count < _fetchDataNumber) {
+        
         [self getHistoryMessageWithCount:(_fetchDataNumber - historyArray.count) messageId:_fetchUserMessageId==nil?@"":_fetchUserMessageId];
         _isLocalHistoryMessageOver = YES;
         _isFirstLoadMessage = (_isFirstLoadMessage == 3?3:2);
     } else {
         _isFirstLoadMessage = (_isFirstLoadMessage == 3?3:1);
     }
+
     _fetchDataNumber = kFetchMessageNumber;
-    [self.tableView.header endRefreshing];
     [self messageDataModelArrayAddModels:historyArray completeFinishBlock:^{
         if (isFirstLoad) {
             if (_messageDataModelArray.count >= 1) {
                 if (_isFirstLoadMessage == 1) {
                     _isFirstLoadMessage = 3;
-                    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:_messageDataModelArray.count -1 inSection:0];
+                    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:_messageDataModelArray.count inSection:0];
                     [self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionTop animated:NO];
+                    [self performSelector:@selector(scrollCellAtIndex:) withObject:indexPath afterDelay:0.001f];
                 }
                 [self readMessage];
             }
         } else {
             self.moreMessageView.hidden = YES;
         }
+        if (self.tableView.header.isRefreshing) {
+            [self.tableView.header endRefreshing];
+        }
     }];
 }
+
+- (void)scrollCellAtIndex:(NSIndexPath *)indexPath
+{
+    [self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionTop animated:NO];
+}
+
 /**
  *   @author xiaerfei, 15-11-06 15:11:19
  *
@@ -565,6 +677,8 @@
         messageModel.type        = @"1";
         [MessageModel sendMessageAddToDBWithModel:messageModel];
     }
+    messageModel.animateStatus = YES;
+    messageModel.isSendFail    = NO;
     [self messageDataModelArrayAddModel:messageModel];
     [self.tableView reloadData];
     [_sendMessageDict setValue:messageModel forKey:messageModel.clientMsgId];
@@ -592,16 +706,32 @@
 - (void)getHistoryMessageWithCount:(NSInteger)count messageId:(NSString *)messageId
 {
     if (count == 0) {
+        if (self.tableView.header.isRefreshing) {
+            [self.tableView.header endRefreshing];
+        }
         return;
     }
     
     if (self.isConnect == NO) {
+        if (self.tableView.header.isRefreshing) {
+            [self.tableView.header endRefreshing];
+        }
         return;
     }
     
+    /*
     if (self.tableView.header.isRefreshing) {
         return;
     }
+     */
+    if (_isGetMsgPullDownLoad) {
+        if (self.tableView.header.isRefreshing) {
+            [self.tableView.header endRefreshing];
+        }
+        return;
+    }
+    
+    _isGetMsgPullDownLoad = YES;
     
     NSDictionary *requestInfo =
                       @{@"groupId":_groupId,
@@ -619,10 +749,11 @@
  */
 - (void)delayMessageRefreshAction:(id)obj
 {
-    NSDictionary *info = obj;
-    BOOL status = [info[@"status"] boolValue];
-    MessageModel *model = info[@"model"];
-    [self refreshSendMessageStatus:status model:model];
+//    NSDictionary *info = obj;
+//    BOOL status = [info[@"status"] boolValue];
+//    MessageModel *model = info[@"model"];
+//    [self.tableView reloadData];
+//    [self refreshSendMessageStatus:status model:model];
     [self.tableView reloadData];
 }
 #pragma mark - getters
@@ -699,5 +830,14 @@
     return _getMsgChatHandler;
 }
 
+- (GetMembersAPICmd *)getMembersAPICmd
+{
+    if (_getMembersAPICmd == nil) {
+        _getMembersAPICmd = [[GetMembersAPICmd alloc] init];
+        _getMembersAPICmd.delegate = self;
+        _getMembersAPICmd.path = [NSString stringWithFormat:@"api_v2/MsgGroupMemberInfo/%@/getMembers",_groupId.lowercaseString];
+    }
+    return _getMembersAPICmd;
+}
 @end
 

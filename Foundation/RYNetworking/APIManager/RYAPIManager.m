@@ -116,13 +116,13 @@
         [RYAPILogger logDebugInfoWithURL:urlString requestHeader:operation.request.allHTTPHeaderFields responseHeader:operation.response.allHeaderFields requestParams:params responseParams:responseObject httpMethod:@"GET" requestId:requestId apiCmdDescription:strongBaseAPICmd.child.apiCmdDescription apiName:NSStringFromClass([strongBaseAPICmd class])];
 #endif
         if ([strongBaseAPICmd.interceptor respondsToSelector:@selector(apiCmd:beforePerformSuccessWithResponse:)]) {
-            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd beforePerformSuccessWithResponse:operation.response];
+            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd beforePerformSuccessWithResponse:operation.responseString];
         }
         if ([strongBaseAPICmd.delegate respondsToSelector:@selector(apiCmdDidSuccess:responseData:)]) {
             [strongBaseAPICmd.delegate apiCmdDidSuccess:strongBaseAPICmd responseData:responseObject];
         }
         if ([strongBaseAPICmd.interceptor respondsToSelector:@selector(apiCmd:afterPerformSuccessWithResponse:)]) {
-            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd afterPerformSuccessWithResponse:operation.response];
+            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd afterPerformSuccessWithResponse:operation.responseString];
         }
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
         __strong __typeof(weakBaseAPICmd) strongBaseAPICmd = weakBaseAPICmd;
@@ -136,19 +136,21 @@
         }
 #ifdef DEBUGLOGGER
         [RYAPILogger logDebugInfoWithURL:urlString requestHeader:operation.request.allHTTPHeaderFields responseHeader:operation.response.allHeaderFields requestParams:params httpMethod:@"GET" error:error requestId:requestId apiCmdDescription:strongBaseAPICmd.child.apiCmdDescription apiName:NSStringFromClass([strongBaseAPICmd class])];
+        
 #endif
         if ([strongBaseAPICmd.interceptor respondsToSelector:@selector(apiCmd:beforePerformFailWithResponse:)]) {
-            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd beforePerformFailWithResponse:operation.response];
+            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd beforePerformFailWithResponse:operation.responseString];
         }
         if ([strongBaseAPICmd.delegate respondsToSelector:@selector(apiCmdDidFailed:error:)]) {
             [strongBaseAPICmd.delegate apiCmdDidFailed:strongBaseAPICmd error:error];
         }
         if ([strongBaseAPICmd.interceptor respondsToSelector:@selector(apiCmd:afterPerformFailWithResponse:)]) {
-            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd afterPerformFailWithResponse:operation.response];
+            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd afterPerformFailWithResponse:operation.responseString];
         }
     }];
     if (baseAPICmd.cookie) {
-        [(NSMutableURLRequest *)requestOperation.request setAllHTTPHeaderFields:baseAPICmd.cookie];
+        [Tool requestWithCookie];
+        //[(NSMutableURLRequest *)requestOperation.request setAllHTTPHeaderFields:baseAPICmd.cookie];
     }
     self.dispatchTable[requestId] = requestOperation;
     return [requestId integerValue];
@@ -156,7 +158,7 @@
 
 - (NSInteger)callPOSTWithParams:(id)params urlString:(NSString *)urlString baseAPICmd:(RYBaseAPICmd *)baseAPICmd
 {
-
+    
     NSNumber *requestId = [self generateRequestId];
     __weak __typeof(baseAPICmd) weakBaseAPICmd = baseAPICmd;
     AFHTTPRequestOperation *requestOperation = [self.httpRequestOperationManager POST:urlString parameters:params success:^(AFHTTPRequestOperation *operation, id responseObject) {
@@ -174,13 +176,13 @@
         [RYAPILogger logDebugInfoWithURL:urlString requestHeader:operation.request.allHTTPHeaderFields responseHeader:operation.response.allHeaderFields requestParams:params responseParams:responseObject httpMethod:@"POST" requestId:requestId apiCmdDescription:strongBaseAPICmd.child.apiCmdDescription apiName:NSStringFromClass([strongBaseAPICmd class])];
 #endif
         if ([strongBaseAPICmd.interceptor respondsToSelector:@selector(apiCmd:beforePerformSuccessWithResponse:)]) {
-            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd beforePerformSuccessWithResponse:operation.response];
+            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd beforePerformSuccessWithResponse:operation.responseString];
         }
         if ([strongBaseAPICmd.delegate respondsToSelector:@selector(apiCmdDidSuccess:responseData:)]) {
             [strongBaseAPICmd.delegate apiCmdDidSuccess:strongBaseAPICmd responseData:responseObject];
         }
         if ([strongBaseAPICmd.interceptor respondsToSelector:@selector(apiCmd:afterPerformSuccessWithResponse:)]) {
-            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd afterPerformSuccessWithResponse:operation.response];
+            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd afterPerformSuccessWithResponse:operation.responseString];
         }
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
         __strong __typeof(weakBaseAPICmd) strongBaseAPICmd = weakBaseAPICmd;
@@ -196,17 +198,18 @@
         [RYAPILogger logDebugInfoWithURL:urlString requestHeader:operation.request.allHTTPHeaderFields responseHeader:operation.response.allHeaderFields requestParams:params httpMethod:@"POST" error:error requestId:requestId apiCmdDescription:strongBaseAPICmd.child.apiCmdDescription apiName:NSStringFromClass([strongBaseAPICmd class])];
 #endif
         if ([strongBaseAPICmd.interceptor respondsToSelector:@selector(apiCmd:beforePerformFailWithResponse:)]) {
-            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd beforePerformFailWithResponse:operation.response];
+            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd beforePerformFailWithResponse:operation.responseString];
         }
         if ([strongBaseAPICmd.delegate respondsToSelector:@selector(apiCmdDidFailed:error:)]) {
             [strongBaseAPICmd.delegate apiCmdDidFailed:strongBaseAPICmd error:error];
         }
         if ([strongBaseAPICmd.interceptor respondsToSelector:@selector(apiCmd:afterPerformFailWithResponse:)]) {
-            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd afterPerformFailWithResponse:operation.response];
+            [strongBaseAPICmd.interceptor apiCmd:strongBaseAPICmd afterPerformFailWithResponse:operation.responseString];
         }
     }];
     if (baseAPICmd.cookie) {
-        [(NSMutableURLRequest *)requestOperation.request setAllHTTPHeaderFields:baseAPICmd.cookie];
+        [Tool requestWithCookie];
+        //[(NSMutableURLRequest *)requestOperation.request setAllHTTPHeaderFields:baseAPICmd.cookie];
     }
     self.dispatchTable[requestId] = requestOperation;
     return [requestId integerValue];

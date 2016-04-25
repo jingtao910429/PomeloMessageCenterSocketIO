@@ -8,7 +8,7 @@
 
 #import "ChatViewRoomController.h"
 
-@interface ChatViewRoomController (ChatViewRoom)
+@interface ChatViewRoomController (ChatViewRoom)<APICmdApiCallBackDelegate>
 /**
  *   @author xiaerfei, 15-12-09 16:12:06
  *
@@ -102,16 +102,7 @@
  *
  *   @param modelArray
  */
-- (void)messageDataModelArrayAddModels:(NSArray *)modelArray completeFinishBlock:(void (^)())block;
-/**
- *   @author xiaerfei, 15-10-30 16:10:24
- *
- *   刷新发送消息的状态 去掉菊花 或者 显示发送失败
- *
- *   @param status YES:成功   NO:失败
- *   @param model
- */
-- (void)refreshSendMessageStatus:(BOOL)status model:(MessageModel *)model;
+- (void)messageDataModelArrayAddModels:(NSMutableArray *)modelArray completeFinishBlock:(void (^)())block;
 /**
  *   @author xiaerfei, 15-11-19 09:11:20
  *

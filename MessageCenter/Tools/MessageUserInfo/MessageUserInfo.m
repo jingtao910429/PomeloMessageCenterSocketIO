@@ -55,7 +55,7 @@
     }
     
     self.block = block;
-    self.getMembersOfUserInfoAPICmd.path = [NSString stringWithFormat:@"api_v2/User/getViewUserPersons?userId=%@",userId.lowercaseString];
+    self.getMembersOfUserInfoAPICmd.path = [NSString stringWithFormat:@"api_v2/User/getViewUserPersons?userIds=%@",userId.lowercaseString];
     [self.getMembersOfUserInfoAPICmd loadData];
 }
 
@@ -63,7 +63,7 @@
 
 - (void)apiCmdDidSuccess:(RYBaseAPICmd *)baseAPICmd responseData:(id)responseData
 {
-    NSDictionary *result = responseData[@"Result"];
+    NSDictionary *result = responseData[0];
     if ([result isKindOfClass:[NSDictionary class]]) {
         if (result.count == 0) {
             return;
@@ -74,8 +74,8 @@
             return;
         }
         tempDict[@"UserId"]     = userId;
-        tempDict[@"UserRole"]   = tempDict[@"UserRole"] == nil?@"":tempDict[@"UserRole"];
-        tempDict[@"PersonName"] = tempDict[@"PersonName"] == nil?@"":tempDict[@"PersonName"];
+        tempDict[@"UserRole"]   = result[@"UserRole"] == nil?@"":result[@"UserRole"];
+        tempDict[@"PersonName"] = result[@"MsgGroupMemberName"] == nil?@"":result[@"MsgGroupMemberName"];
         
         tempDict[@"UserType"]   = result[@"UserType"] == nil?@"":result[@"UserType"];
         tempDict[@"PhoneNo"]    = result[@"PhoneNo"] == nil?@"":result[@"PhoneNo"];

@@ -33,15 +33,22 @@
     return @"disConnectNotificationStr";
 }
 
-+ (void)setConnectState:(NSString *)connectState {
++ (void)setConnectStatus:(NSString *)connectStatus {
+    
+    NSString *oldConnectStatus = [MessageTool connectStatus];
+    
+    if (![connectStatus isEqualToString:oldConnectStatus] && ![connectStatus isEqualToString:@"-1"]) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:[MessageTool ConnectStateNotificationStr] object:connectStatus];
+    }
+    
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    [defaults setValue:connectState forKey:[NSString stringWithFormat:@"%@connectState",[Tool getOwerUserID]]];
+    [defaults setValue:connectStatus forKey:[NSString stringWithFormat:@"%@connectStatus",[Tool getOwerUserID]]];
     [defaults synchronize];
 }
 
-+ (NSString *)connectState {
++ (NSString *)connectStatus {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    return [defaults objectForKey:[NSString stringWithFormat:@"%@connectState",[Tool getOwerUserID]]];
+    return [defaults objectForKey:[NSString stringWithFormat:@"%@connectStatus",[Tool getOwerUserID]]];
 }
 
 
@@ -58,13 +65,13 @@
 
 + (void)setUserID:(NSString *)userID {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    [defaults setValue:userID forKey:[NSString stringWithFormat:@"%@userID",[Tool getOwerUserID]]];
+    [defaults setValue:userID forKey:@"User_ID"];
     [defaults synchronize];
 }
 
 + (NSString *)getUserID {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    return [defaults objectForKey:[NSString stringWithFormat:@"%@userID",[Tool getOwerUserID]]];
+    return [defaults objectForKey:@"User_ID"];
 }
 
 + (void)setSessionId:(NSString *)sessionId {
@@ -125,9 +132,13 @@
 }
 //区别有无未读消息
 + (void)setUnReadMessage:(NSString *)unReadMessage {
+    
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"UnReadMessage_Notification" object:unReadMessage];
+    
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     [defaults setValue:unReadMessage forKey:[NSString stringWithFormat:@"%@unReadMessage",[Tool getOwerUserID]]];
     [defaults synchronize];
+
 }
 
 + (NSString *)unReadMessage {
